@@ -1,19 +1,22 @@
-# Sử dụng node:18-alpine (nhẹ hơn)
+# Sử dụng Node 18 với Alpine Linux
 FROM node:18-alpine
 
 # Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Sao chép file package.json và yarn.lock trước để tối ưu layer cache
+# Cài đặt Yarn và NestJS CLI
+RUN apk add --no-cache yarn && yarn global add @nestjs/cli
+
+# Sao chép file package.json và yarn.lock để tối ưu cache
 COPY package.json yarn.lock ./
 
-# Cài đặt dependencies (chỉ cài production nếu không cần devDependencies)
-RUN yarn install --frozen-lockfile --production
+# Cài đặt dependencies (bao gồm cả devDependencies để build)
+RUN yarn install --frozen-lockfile
 
-# Sao chép toàn bộ source code vào container
+# Sao chép toàn bộ source code
 COPY . .
 
-# Build ứng dụng
+# Build ứng dụng NestJS
 RUN yarn build
 
 # Mở port 8000
