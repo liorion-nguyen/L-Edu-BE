@@ -21,17 +21,4 @@ export class UserController {
             )
         }
     }
-
-    @SkipAuth()
-    @Post()
-    async CreateUser(@Body() body: CreateUserRequest) {
-        try {
-            return successResponse(await this.userService.CreateUser(body));
-        } catch (error) {
-            throw new CommonException(
-                error.message,
-                error.status || HttpStatus.INTERNAL_SERVER_ERROR
-            )
-        }
-    }
 }

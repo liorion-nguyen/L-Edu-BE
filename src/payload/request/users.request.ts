@@ -40,22 +40,30 @@ export class CreateUserRequest {
     fullName: string;
 
     @IsString()
+    @IsOptional()
     avatar?: string;
 
+    @IsOptional()
     address?: Address;
-
+    
+    @IsOptional()
     phone?: Phone;
 
+    @IsOptional()
     @IsNumber()
     age?: number
 
+    @IsOptional()
     role?: Role;
 
+    @IsOptional()
     gender?: Gender;
 
+    @IsOptional()
     @IsDateString()
     birthday?: Date;
 
+    @IsOptional()
     status?: Status;
 }
 
@@ -90,4 +98,19 @@ export class ChangePasswordRequest {
     @Length(6, 32)
     @IsNotEmpty()
     newPassword: string;
+}
+
+export class LoginRequest {
+    @IsString()
+    @IsNotEmpty()
+    email: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password: string;
+}
+
+export class LogoutRequest {
+    @IsString()
+    refresh_token: string;
 }

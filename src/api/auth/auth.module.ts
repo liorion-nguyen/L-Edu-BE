@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from '../users/users.module';
 import { JwtStrategy } from 'src/common/guards/jwtStratergy';
 import { UserService } from '../users/users.service';
+import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UserService } from '../users/users.service';
       signOptions: { expiresIn: '7d' },
     }),
     forwardRef(() => UserModule),
+    forwardRef(() => RefreshTokenModule),
   ],
   providers: [AuthService, JwtStrategy, UserService],
   controllers: [AuthController],

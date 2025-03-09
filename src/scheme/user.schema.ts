@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Role, Status } from '../enums/user.enum';
-
-export type UserDocument = User & Document;
 
 @Schema({ _id: false })
 class Address {
@@ -26,7 +24,7 @@ class Phone {
 }
 
 @Schema({ timestamps: true })
-export class User {
+export class User extends Document {
     @Prop({ required: true })
     password: string;
 

@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './api/users/users.module';
+import { AuthModule } from './api/auth/auth.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UserModule } from './api/users/users.module';
     }),
     MongooseModule.forRoot(process.env.DB_URI),
     UserModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [

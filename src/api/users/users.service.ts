@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { CreateUserRequest, SearchUserRequest } from "src/payload/request/users.request";
+import { SearchUserRequest } from "src/payload/request/users.request";
 import { User } from "src/scheme/user.schema";
-import * as bcrypt from "bcryptjs";
 
 @Injectable()
 export class UserService {
@@ -39,6 +38,10 @@ export class UserService {
         };
     }
 
+    async findUserByEmail(email: string): Promise<User | null> {
+        return this.userModel.findOne({ email }).lean().exec();
+    }
+
     async findUserById(id: any): Promise<User> {
         const user = await this.userModel.findById(id).select("-password").exec();
 
@@ -46,16 +49,5 @@ export class UserService {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
         return user;
-    }
-
-    async CreateUser(body: CreateUserRequest): Promise<User> {
-        const userExist = await this.findUserById(body.email);
-        if (userExist) {
-            throw new NotFoundException(`User with email ${body.email} already exist`);
-        }
-        const hashPassword = await bcrypt.hash(body.password, 10);
-        body.password = hashPassword;
-        const user = new this.userModel(body);
-        return user.save();
     }
 }
