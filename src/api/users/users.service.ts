@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { SearchUserRequest } from "src/payload/request/users.request";
+import { SearchUserRequest, UpdateUserRequest } from "src/payload/request/users.request";
 import { User } from "src/scheme/user.schema";
 
 @Injectable()
@@ -49,5 +49,24 @@ export class UserService {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
         return user;
+    }
+
+    async UpdateUser(id: string, body: UpdateUserRequest): Promise<User> {
+        if (body.password) {
+            throw new Error("Password cannot be updated");
+        }
+        const user = await this.userModel.findByIdAndUpdate({ _id: id }, body, { new: true });
+        if (!user) {
+            throw new Error(`User with id ${id} not found`);
+        }
+        return user;
+    }
+
+    async DeleteUser(id: string): Promise<string> {
+        const user = await this.userModel.findByIdAndDelete(id);
+        if (!user) {
+            throw new Error(`User with id ${id} not found`);
+        }
+        return `Delete user [${user.email}] success`;
     }
 }

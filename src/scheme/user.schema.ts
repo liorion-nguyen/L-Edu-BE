@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
 import { Role, Status } from '../enums/user.enum';
 
 @Schema({ _id: false })
@@ -39,9 +39,6 @@ export class User extends Document {
 
     @Prop({ required: true })
     fullName: string;
-
-    @Prop({ default: null })
-    age?: number;
 
     @Prop({ default: null })
     gender?: string;
