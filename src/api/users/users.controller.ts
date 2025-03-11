@@ -12,9 +12,19 @@ export class UserController {
     @Get("search")
     async Search(@Query() query: SearchUserRequest, @Req() req) {
         try {
-            console.log("hello: ", req);
-            
             return successResponse(await this.userService.Search(query));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @Get("core/:role")
+    async getUsersCore(@Req() req, @Param("role") role: string) {
+        try {
+            return successResponse(await this.userService.getUsersCore(req.user.role, role));
         } catch (error) {
             throw new CommonException(
                 error.message,

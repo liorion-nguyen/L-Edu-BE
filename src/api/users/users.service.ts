@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { Role } from "src/enums/user.enum";
 import { SearchUserRequest, UpdateUserRequest } from "src/payload/request/users.request";
 import { UserCoreResponse } from "src/payload/response/users.response";
 import { User } from "src/scheme/user.schema";
@@ -38,6 +39,23 @@ export class UserService {
             total,
         };
     }
+
+    async getUsersCore(role: string, searchRole: string): Promise<UserCoreResponse[]> {
+        try {
+            if (role != Role.ADMIN) {
+                throw new Error("You are not authorized to perform this action");
+            }
+            const users = await this.userModel.find({ role: searchRole }).lean();
+            return users.map((user) => ({
+                _id: user._id as string,
+                avatar: user.avatar,
+                fullName: user.fullName,
+                email: user.email,
+            }));
+        } catch (error) {
+            throw new Error(`Failed to fetch sessions: ${error.message}`);
+        }
+    }   
 
     async GetUser(_id: string): Promise<User> {
         return this.userModel.findById(_id).select("-password").exec();

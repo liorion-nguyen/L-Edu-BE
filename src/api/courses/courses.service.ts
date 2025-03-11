@@ -10,6 +10,7 @@ import { UserCoreResponse } from "src/payload/response/users.response";
 import { User } from "src/scheme/user.schema";
 import { Role } from "src/enums/user.enum";
 import { Mode } from "src/enums/session.enum";
+import { Status } from "src/enums/course.enum";
 
 @Injectable()
 export class CoursesService {
@@ -40,6 +41,9 @@ export class CoursesService {
     
         const coursesWithInstructor: CourseResponse[] = await Promise.all(
             data.map(async (course) => {
+                if (course.status != Status.ACTIVE) {
+                    return;
+                }
                 let mode = Mode.OPEN;
                 let instructor: UserCoreResponse | null = null;
     
