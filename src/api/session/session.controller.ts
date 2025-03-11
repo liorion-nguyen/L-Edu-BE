@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req, UseInterceptors } from "@nestjs/common";
 import { SessionService } from "./session.service";
 import { CommonException } from "src/common/exception/exception";
 import { CreateSessionRequest, SearchSessionRequest, UpdateSessionRequest } from "src/payload/request/session.request";
 import { successResponse } from "src/common/dto/response.dto";
+import { AnyFilesInterceptor } from "@nestjs/platform-express";
 
 @Controller("session")
 export class SessionController {
@@ -22,7 +23,20 @@ export class SessionController {
         }
     }
 
+    @Get(":id")
+    async GetSession(@Param('id') id: string, @Req() req) {
+        try {
+            return successResponse(await this.sessionService.getSessionById(id, req.user.role));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
     @Post()
+    @UseInterceptors(AnyFilesInterceptor()) 
     async CreateSession(@Body() body: CreateSessionRequest) {
         try {
             return successResponse(await this.sessionService.CreateSession(body));

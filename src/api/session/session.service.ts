@@ -1,19 +1,22 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { CreateSessionRequest, SearchSessionRequest, UpdateSessionRequest } from "src/payload/request/session.request";
 import { Session } from "src/scheme/session.schema";
 import { CoursesService } from "../courses/courses.service";
+import { SessionCoreResponse } from "src/payload/response/session.response";
+import { Role } from "src/enums/user.enum";
+import { Mode } from "src/enums/session.enum";
 
 @Injectable()
 export class SessionService {
     constructor(
         @InjectModel(Session.name) private readonly sessionModel: Model<Session>,
-        private readonly coursesService: CoursesService,
+        @Inject(forwardRef(() => CoursesService)) private coursesService: CoursesService
     ) { }
 
     async CreateSession(body: CreateSessionRequest): Promise<Session> {
-        const sessionExist = await this.sessionModel.findOne({ $or: [{ title: body.title }, { sessionNumber: body.sessionNumber }] });
+        const sessionExist = await this.sessionModel.findOne({ $or: [{ title: body.title }, { $and: [{sessionNumber: body.sessionNumber}, {courseId: body.courseId}] }] });
         if (sessionExist) {
             throw new Error(`Session with title ${body.title} or session number ${body.sessionNumber} already exist`);
         }
@@ -53,22 +56,24 @@ export class SessionService {
 
     async UpdateSession(id: string, body: UpdateSessionRequest): Promise<Session> {
         if (body.sessionNumber) {
-            const sessionExist = await this.sessionModel.findOne({ sessionNumber: body.sessionNumber });
+            const sessionExist = await this.sessionModel.findOne({
+                $or: [
+                    { sessionNumber: body.sessionNumber, courseId: body.courseId },
+                    { title: body.title, courseId: body.courseId }
+                ],
+                _id: { $ne: id }  
+            });
             if (sessionExist) {
-                throw new Error(`Session with session number ${body.sessionNumber} already exist`);
+                throw new BadRequestException(`Session với số ${body.sessionNumber} hoặc tiêu đề "${body.title}" đã tồn tại.`);
             }
         }
-        if (body.title) {
-            const sessionExist2 = await this.sessionModel.findOne({ title: body.title });
-            if (sessionExist2) {
-                throw new Error(`Session with title ${body.title} already exist`);
-            }
+        const updatedSession = await this.sessionModel.findByIdAndUpdate(id, body, { new: true });
+    
+        if (!updatedSession) {
+            throw new NotFoundException(`Không tìm thấy session với id: ${id}`);
         }
-        const Session = await this.sessionModel.findByIdAndUpdate(id, body, { new: true });
-        if (!Session) {
-            throw new Error(`Session with id ${id} not found`);
-        }
-        return Session;
+
+        return updatedSession;
     }
 
     async DeleteSession(id: string): Promise<string> {
@@ -76,7 +81,51 @@ export class SessionService {
         if (!Session) {
             throw new Error(`Session with id ${id} not found`);
         }
-        // await this.coursesService.RemoveSession(Session, id);
+        await this.coursesService.RemoveSession(Session.courseId, id);
         return `Delete Session [${Session.title}] success`;
+    }
+
+    async getSessionsCore(courseId: string, role: string): Promise<SessionCoreResponse[]> {
+        try {
+            const sessions = await this.sessionModel.find({ courseId }).lean();
+            if (!sessions || sessions.length === 0) {
+                throw new NotFoundException(`No sessions found for courseId: ${courseId}`);
+            }
+            return sessions.map(({ _id, sessionNumber, title, views, notesMd, videoUrl, quizId, mode }) => ({
+                _id,
+                sessionNumber: Number(sessionNumber),
+                title,
+                views: Number(views),
+                modeNoteMd: notesMd ? notesMd?.mode : "CLOSE",
+                modeVideoUrl: videoUrl ? videoUrl?.mode : "CLOSE",
+                modeQuizId: quizId ? quizId?.mode : "CLOSE",
+                mode: role == Role.ADMIN ? Mode.OPEN : mode ?? "CLOSE"
+            })) as SessionCoreResponse[];
+
+        } catch (error) {
+            throw new Error(`Failed to fetch sessions: ${error.message}`);
+        }
+    }
+
+    async getSessionById(sessionId: string, role: string): Promise<Session> {
+        const session = await this.sessionModel.findById(sessionId);
+        if (!session) {
+            throw new NotFoundException(`Session with id ${sessionId} not found`);
+        }
+        if (session.mode != Mode.OPEN && role != Role.ADMIN) {
+            throw new BadRequestException(`Session with id ${sessionId} is closed`);
+        }
+        await this.sessionModel.findByIdAndUpdate(sessionId, { views: session.views + 1 }, { new: true });
+        if (role == Role.ADMIN) {
+            return {
+                ...session.toJSON(),
+                mode: Mode.OPEN,
+                views: session.views + 1
+            };
+        }
+        return {
+            ...session.toJSON(),
+            views: session.views + 1
+        };
     }
 }

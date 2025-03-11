@@ -2,34 +2,75 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { CreateCourseRequest, SearchCourseRequest, UpdateCourseRequest } from "src/payload/request/courses.request";
+import { CourseResponse } from "src/payload/response/courses.response";
 import { Course } from "src/scheme/course.schema";
+import { UserService } from "../users/users.service";
+import { SessionService } from "../session/session.service";
+import { UserCoreResponse } from "src/payload/response/users.response";
+import { User } from "src/scheme/user.schema";
+import { Role } from "src/enums/user.enum";
+import { Mode } from "src/enums/session.enum";
 
 @Injectable()
 export class CoursesService {
     constructor(
         @InjectModel(Course.name) private readonly courseModel: Model<Course>,
+        private readonly userService: UserService,
+        private readonly sessionService: SessionService,
     ) { }
 
-    async Search(query: SearchCourseRequest) {
+    async Search(query: SearchCourseRequest, user): Promise<{ data: CourseResponse[]; total: number }> {
         const { limit = 6, page = 0 } = query;
         const offset = page * limit;
         const filter: any = {};
-
+    
         if (query.name) {
             filter.name = { $regex: query.name, $options: "i" };
         }
-
+    
         const data = await this.courseModel
             .find(filter)
             .sort({ createdAt: -1 })
             .skip(offset)
             .limit(limit)
+            .lean()
             .exec();
-
+    
         const total = await this.courseModel.countDocuments(filter).exec();
-
+    
+        const coursesWithInstructor: CourseResponse[] = await Promise.all(
+            data.map(async (course) => {
+                let mode = Mode.OPEN;
+                let instructor: UserCoreResponse | null = null;
+    
+                if (course.instructorId) {
+                    try {
+                        instructor = await this.userService.getUserCore(course.instructorId);
+                    } catch (error) {
+                        console.error(`Lỗi lấy instructor cho course ${course._id}:`, error);
+                    }
+                }
+    
+                if (user.role !== Role.ADMIN) {
+                    const isStudentEnrolled = course.students.some((studentId: string) => studentId == user._id);
+                    if (!isStudentEnrolled) {
+                        mode = Mode.CLOSE;
+                    }
+                }
+    
+                return {
+                    ...course,
+                    _id: course._id.toString(),
+                    instructor,
+                    mode
+                };
+            })
+        );
+    
+        coursesWithInstructor.sort((a, b) => (a.mode === Mode.OPEN ? -1 : 1));
+    
         return {
-            data: data,
+            data: coursesWithInstructor,
             total,
         };
     }
@@ -66,10 +107,47 @@ export class CoursesService {
         }
     }
 
-    async RemoveSession(courseId: string, sessionId: string): Promise<void> {
-        const course = await this.courseModel.findByIdAndUpdate(courseId, { $pull: { sessions: sessionId } }, { new: true });
+    async RemoveSession(_id: string, sessionId: string): Promise<void> {
+        const course = await this.courseModel.findByIdAndUpdate(_id, { $pull: { sessions: sessionId } }, { new: true });
         if (!course) {
-            throw new Error(`Course with id ${courseId} not found`);
+            throw new Error(`Course with id ${_id} not found`);
         }
     }
+
+    async GetCourse(_id: string, role: string): Promise<CourseResponse> {
+        const course = await this.courseModel.findById(_id);
+        if (!course) {
+            throw new Error(`Course with id ${_id} not found`);
+        }
+
+        if (role !== Role.ADMIN) {
+            const isStudentEnrolled = course.students.some((studentId: string) => studentId == _id);
+            if (!isStudentEnrolled) {
+                throw new Error(`Student with id ${_id} is not enrolled in this course`);
+            }
+        }
+
+        const instructor = course.instructorId
+            ? await this.userService.getUserCore(course.instructorId)
+            : null;
+
+        const sessions = course.sessions.length > 0
+            ? await this.sessionService.getSessionsCore(_id, role) : [];
+
+            
+        return {
+            _id: course._id.toString(),
+            name: course.name,
+            description: course.description,
+            price: course.price,
+            discount: course.discount ?? undefined,
+            instructor,
+            cover: course.cover ?? undefined,
+            students: course.students || [],
+            sessions,
+            duration: course.duration,
+            status: course.status
+        };
+    }
+
 }

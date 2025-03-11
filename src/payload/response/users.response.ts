@@ -7,3 +7,13 @@ export class LoginResponse {
     @IsString()
     refresh_token: string;
 }
+export class UserCoreResponse {
+    @IsString()
+    _id: string;
+
+    @IsString()
+    avatar?: string;
+
+    @IsString()
+    fullName: string;
+}

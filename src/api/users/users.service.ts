@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { SearchUserRequest, UpdateUserRequest } from "src/payload/request/users.request";
+import { UserCoreResponse } from "src/payload/response/users.response";
 import { User } from "src/scheme/user.schema";
 
 @Injectable()
@@ -38,6 +39,10 @@ export class UserService {
         };
     }
 
+    async GetUser(_id: string): Promise<User> {
+        return this.userModel.findById(_id).select("-password").exec();
+    }
+
     async findUserByEmail(email: string): Promise<User | null> {
         return this.userModel.findOne({ email }).lean().exec();
     }
@@ -69,4 +74,20 @@ export class UserService {
         }
         return `Delete user [${user.email}] success`;
     }
+
+    async getUserCore(id: string): Promise<UserCoreResponse> {
+            try {
+                const user = await this.userModel.findById(id).lean();
+                if (!user) {
+                    throw new NotFoundException(`No user found for Id: ${id}`);
+                }
+                return {
+                    _id: user._id as string,
+                    avatar: user.avatar,
+                    fullName: user.fullName,
+                }           
+            } catch (error) {
+                throw new Error(`Failed to fetch sessions: ${error.message}`);
+            }
+        }
 }

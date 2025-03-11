@@ -29,23 +29,29 @@ export class QuizId {
 
 @Schema({ timestamps: true })
 export class Session extends Document {
-  @Prop({ required: true, type: Number, description: 'Session number in the course' })
-  sessionNumber: number;
+    @Prop({ required: true, type: String, description: 'Course ID' })
+    courseId: string;
 
-  @Prop({ required: true, type: String, description: 'Title of the session' })
-  title: string;
+    @Prop({ required: true, type: String, description: 'Session number in the course' })
+    sessionNumber: string;
 
-  @Prop({ default: 0, type: Number, description: 'Number of views for the session' })
-  views: number;
+    @Prop({ required: true, type: String, description: 'Title of the session' })
+    title: string;
 
-  @Prop({ type: QuizId, required: false, description: 'Quiz ID linked to this session' })
-  quizId?: QuizId;
+    @Prop({ default: 0, type: Number, description: 'Number of views for the session' })
+    views: number;
 
-  @Prop({ type: VideoUrl, required: false, description: 'URL of the session video' })
-  videoUrl?: VideoUrl;
+    @Prop({ type: QuizId, required: false, description: 'Quiz ID linked to this session' })
+    quizId?: QuizId;
 
-  @Prop({ type: NotesMd, required: false, description: 'Markdown content for session notes' })
-  notesMd?: NotesMd; 
+    @Prop({ type: VideoUrl, required: false, description: 'URL of the session video' })
+    videoUrl?: VideoUrl;
+
+    @Prop({ type: NotesMd, required: false, description: 'Markdown content for session notes' })
+    notesMd?: NotesMd;
+
+    @Prop({ type: String, default: Mode.OPEN, description: 'Mode of the session' })
+    mode: Mode;
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

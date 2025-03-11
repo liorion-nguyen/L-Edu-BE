@@ -10,9 +10,21 @@ export class CoursesController {
     constructor(private readonly courseService: CoursesService) { }
 
     @Get("search")
-    async Search(@Query() query: SearchCourseRequest) {
+    async Search(@Query() query: SearchCourseRequest, @Req() req) {
         try {
-            return successResponse(await this.courseService.Search(query));
+            return successResponse(await this.courseService.Search(query, req.user));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @Get(":id")
+    async GetCourse(@Param('id') id: string, @Req() req) {
+        try {
+            return successResponse(await this.courseService.GetCourse(id, req.user.role));
         } catch (error) {
             throw new CommonException(
                 error.message,

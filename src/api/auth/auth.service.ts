@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CreateUserRequest, LoginRequest } from 'src/payload/request/users.request';
+import { CreateUserRequest, LoginRequest, LogoutRequest } from 'src/payload/request/users.request';
 import { User } from 'src/scheme/user.schema';
 import { UserService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
@@ -11,6 +11,8 @@ import { LoginResponse } from 'src/payload/response/users.response';
 import { RefreshToken } from 'src/scheme/refresh-token.scheme';
 import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
 import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenRequest } from 'src/payload/request/refresh-token.request';
+import { RefreshTokenResponse } from 'src/payload/response/refresh-token.response';
 
 @Injectable()
 export class AuthService {
@@ -58,5 +60,15 @@ export class AuthService {
         body.password = hashPassword;
         const user = new this.userModel(body);
         return user.save();
+    }
+
+    async refreshToken(
+        refreshTokenRequest: RefreshTokenRequest
+    ): Promise<RefreshTokenResponse> {
+        return await this.refreshTokenService.refreshToken(refreshTokenRequest);
+    }
+
+    async logout(refresh_token: LogoutRequest) {
+        await this.refreshTokenService.deleteToken(refresh_token);
     }
 }

@@ -47,29 +47,31 @@ export class CreateSessionRequest {
     courseId: string;
 
     @ApiProperty({ example: 1, description: 'Session number in the course' })
-    @IsNumber()
+    @IsString()
     @IsNotEmpty()
-    sessionNumber: number;
+    sessionNumber: string;
 
     @ApiProperty({ example: 'Introduction to Node.js', description: 'Title of the session' })
     @IsString()
     @IsNotEmpty()
     title: string;
 
-    @ApiPropertyOptional({ example: '65234b6d1d4a3c001f8a8b50', description: 'Quiz ID linked to this session' })
+    @ApiPropertyOptional({ type: QuizId, description: 'Quiz ID' })
     @IsOptional()
-    @Type(() => QuizId)
     quizId?: QuizId;
 
-    @ApiProperty({ example: 'https://youtube.com/example-video', description: 'URL of the session video' })
-    @Type(() => VideoUrl)
+    @ApiPropertyOptional({ type: VideoUrl, description: 'Video URL' })
     @IsOptional()
     videoUrl?: VideoUrl;
 
-    @ApiProperty({ example: '# Markdown Content...', description: 'Markdown content for session notes' })
-    @Type(() => NotesMd)
+    @ApiPropertyOptional({ type: NotesMd, description: 'Notes Markdown' })
     @IsOptional()
     notesMd?: NotesMd;
+
+    @ApiPropertyOptional({ example: 'OPEN', description: 'Mode of the session' })
+    @IsOptional()
+    @IsEnum(Mode)
+    mode?: Mode;
 }
 
 export class UpdateSessionRequest extends PartialType(CreateSessionRequest) {

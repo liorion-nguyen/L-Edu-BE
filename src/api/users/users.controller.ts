@@ -10,11 +10,23 @@ export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Get("search")
-    async Search(@Query() query: SearchUserRequest, @Req() req: Request) {
+    async Search(@Query() query: SearchUserRequest, @Req() req) {
         try {
             console.log("hello: ", req);
             
             return successResponse(await this.userService.Search(query));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @Get()
+    async GetUser(@Req() req) {
+        try {
+            return successResponse(await this.userService.GetUser(req.user._id));
         } catch (error) {
             throw new CommonException(
                 error.message,
