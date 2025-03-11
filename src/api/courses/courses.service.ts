@@ -118,14 +118,14 @@ export class CoursesService {
         }
     }
 
-    async GetCourse(_id: string, role: string): Promise<CourseResponse> {
+    async GetCourse(_id: string, user): Promise<CourseResponse> {
         const course = await this.courseModel.findById(_id);
         if (!course) {
             throw new Error(`Course with id ${_id} not found`);
         }
 
-        if (role !== Role.ADMIN) {
-            const isStudentEnrolled = course.students.some((studentId: string) => studentId == _id);
+        if (user.role !== Role.ADMIN) {
+            const isStudentEnrolled = course.students.some((studentId: string) => studentId == user._id);
             if (!isStudentEnrolled) {
                 throw new Error(`Student with id ${_id} is not enrolled in this course`);
             }
@@ -136,8 +136,7 @@ export class CoursesService {
             : null;
 
         const sessions = course.sessions.length > 0
-            ? await this.sessionService.getSessionsCore(_id, role) : [];
-
+            ? await this.sessionService.getSessionsCore(_id, user.role) : [];
             
         return {
             _id: course._id.toString(),
@@ -150,7 +149,8 @@ export class CoursesService {
             students: course.students || [],
             sessions,
             duration: course.duration,
-            status: course.status
+            status: course.status,
+            instructorId: course.instructorId,
         };
     }
 

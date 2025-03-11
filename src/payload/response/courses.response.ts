@@ -28,4 +28,6 @@ export class CourseResponse {
     status: Status;
 
     mode?: string;
+
+    instructorId?: string;
 }

@@ -24,7 +24,7 @@ export class CoursesController {
     @Get(":id")
     async GetCourse(@Param('id') id: string, @Req() req) {
         try {
-            return successResponse(await this.courseService.GetCourse(id, req.user.role));
+            return successResponse(await this.courseService.GetCourse(id, req.user));
         } catch (error) {
             throw new CommonException(
                 error.message,
