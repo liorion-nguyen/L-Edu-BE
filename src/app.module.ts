@@ -8,18 +8,31 @@ import { AuthModule } from './api/auth/auth.module';
 import { RefreshTokenModule } from './api/refresh-token/refrehser-token.module';
 import { CourseModule } from './api/courses/courses.module';
 import { SessionModule } from './api/session/session.module';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { ChatRoomModule } from './api/chat-room/chat-room.module';
+import { MessageModule } from './api/message/message.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
     }),
+    MailerModule.forRootAsync({
+      useFactory: () => ({
+        transport: 'smtps://user@domain.com:pass@smtp.domain.com',
+        defaults: {
+          from: '"L Edu" <admin@ledu.com>',
+        }
+      }),
+    }),
     MongooseModule.forRoot(process.env.DB_URI),
     UserModule,
     AuthModule,
     RefreshTokenModule,
     CourseModule,
-    SessionModule
+    SessionModule,
+    ChatRoomModule,
+    MessageModule
   ],
   controllers: [],
   providers: [

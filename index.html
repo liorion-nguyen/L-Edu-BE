@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSMUL Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        textarea {
+            width: -webkit-fill-available;
+            height: 100px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .copy-btn {
+            background-color: #28a745;
+        }
+
+        .copy-btn:hover {
+            background-color: #218838;
+        }
+
+        .copied {
+            background-color: #17a2b8 !important;
+        }
+
+        pre {
+            background: #222;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            overflow-y: auto;
+            min-height: 50px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>FSMUL Parser Tool</h2>
+        <textarea id="inp" placeholder="Nhập dữ liệu FSMUL vào đây..."></textarea>
+        <div class="btn-container">
+            <button class="copy-btn" onclick="copyResult()" id="copyBtn">Copy</button>
+        </div>
+        <h3>Kết quả:</h3>
+        <pre id="output"></pre>
+    </div>
+</body>
+
+<script>
+    function parseFSMUL(input) {
+        const result = {};
+
+        if (!input) return { error: "Chuỗi input trống!" };
+
+        // Tách từng phần theo dấu '&'
+        const pairs = input.split('&');
+
+        pairs.forEach(pair => {
+            const [key, value] = pair.split('=');
+
+            if (!key) return; // Bỏ qua nếu key rỗng
+
+            // Nếu giá trị chứa JSON (như g={...}), thì cần xử lý riêng
+            if (value?.startsWith('{') || value?.includes(':')) {
+                try {
+                    result[key] = eval('(' + value + ')'); // Chuyển thành object
+                } catch (e) {
+                    console.error(`Lỗi khi parse JSON ở key ${key}:`, e);
+                    result[key] = value;
+                }
+            } else if (!isNaN(value) && value.trim() !== '') {
+                result[key] = Number(value); // Chuyển sang số nếu có thể
+            } else {
+                result[key] = value ?? ''; // Giữ nguyên chuỗi hoặc rỗng nếu undefined
+            }
+        });
+
+        return result;
+    }
+
+    function send() {
+        const input = document.getElementById('inp').value;
+        const result = parseFSMUL(input);
+        document.getElementById('output').innerText = JSON.stringify(result, null, 2);
+    }
+
+    function copyResult() {
+        const outputText = document.getElementById('output').innerText;
+        if (!outputText) return;
+
+        navigator.clipboard.writeText(outputText).then(() => {
+            const copyBtn = document.getElementById('copyBtn');
+            copyBtn.innerText = "Đã sao chép!";
+            copyBtn.classList.add('copied');
+
+            setTimeout(() => {
+                copyBtn.innerText = "Copy";
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+
+    // Lắng nghe sự kiện nhập dữ liệu vào textarea và parse tự động
+    document.getElementById('inp').addEventListener('input', send);
+</script>
+
+</html>
