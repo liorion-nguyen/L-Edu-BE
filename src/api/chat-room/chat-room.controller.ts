@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req
 import { successResponse } from "src/common/dto/response.dto";
 import { CommonException } from "src/common/exception/exception";
 import { ChatRoomService } from "./chat-room.service";
-import { CreateChatRoomRequest, SearchChatRoomRequest, UpdateChatRoomRequest } from "src/payload/request/chat-room.request";
+import { CreateChatRoomRequest, GetMsgChatRoomRequest, SearchChatRoomRequest, UpdateChatRoomRequest } from "src/payload/request/chat-room.request";
 
 @Controller("chat-room")
 export class ChatRoomController {
@@ -21,9 +21,9 @@ export class ChatRoomController {
     }
 
     @Get(":id")
-    async GetChatRoom(@Param('id') id: string, @Req() req) {
+    async GetChatRoom(@Param('id') id: string, @Query() query: GetMsgChatRoomRequest, @Req() req) {
         try {
-            return successResponse(await this.ChatRoomervice.GetChatRoom(id, req.user));
+            return successResponse(await this.ChatRoomervice.GetChatRoom(id, req.user, query));
         } catch (error) {
             throw new CommonException(
                 error.message,

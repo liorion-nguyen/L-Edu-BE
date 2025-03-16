@@ -6,7 +6,7 @@ import { UserService } from "../users/users.service";
 import { UserCoreResponse } from "src/payload/response/users.response";
 import { Role } from "src/enums/user.enum";
 import { ChatRoomResponse } from "src/payload/response/chat-room.response";
-import { CreateChatRoomRequest, SearchChatRoomRequest, UpdateChatRoomRequest } from "src/payload/request/chat-room.request";
+import { CreateChatRoomRequest, GetMsgChatRoomRequest, SearchChatRoomRequest, UpdateChatRoomRequest } from "src/payload/request/chat-room.request";
 import { MessageService } from "../message/message.service";
 
 @Injectable()
@@ -66,14 +66,16 @@ export class ChatRoomService {
     }
 
     async DeleteChatRoom(id: string): Promise<string> {
-        const ChatRoom = await this.ChatRoomModel.findByIdAndDelete(id);
-        if (!ChatRoom) {
+        await this.messageService.DeleteManyMessage(id);
+        const chatRoom = await this.ChatRoomModel.findByIdAndDelete(id);
+        if (!chatRoom) {
             throw new Error(`ChatRoom with id ${id} not found`);
         }
-        return `Delete ChatRoom [${ChatRoom.name}] success`;
+        return `Deleted ChatRoom [${chatRoom.name}] and all its messages successfully`;
     }
+    
 
-    async GetChatRoom(_id: string, user): Promise<ChatRoomResponse> {
+    async GetChatRoom(_id: string, user, search: GetMsgChatRoomRequest): Promise<ChatRoomResponse> {
         const ChatRoom = await this.ChatRoomModel.findById(_id);
         if (!ChatRoom) {
             throw new Error(`ChatRoom with id ${_id} not found`);
@@ -93,8 +95,8 @@ export class ChatRoomService {
 
         const messages = await this.messageService.Search({
             chatRoomId: _id,
-            limit: 10,
-            page: 0,
+            limit: search.limit || 10,
+            page: search.page || 0,
         }, user);
 
         return {

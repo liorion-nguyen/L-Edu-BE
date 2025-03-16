@@ -42,3 +42,15 @@ export class SearchChatRoomRequest {
     @IsString()
     UserIdJoin?: string;
 }
+
+export class GetMsgChatRoomRequest {
+    @ApiProperty({ example: 1, description: "Số trang" })
+    @IsString()
+    @IsNotEmpty()
+    page: number;
+
+    @ApiProperty({ example: 6, description: "Số lượng" })
+    @IsString()
+    @IsNotEmpty()
+    limit: number;
+}

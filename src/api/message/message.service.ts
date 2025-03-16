@@ -16,7 +16,7 @@ export class MessageService {
     ) { }
 
     async Search(query: SearchMessageRequest, user): Promise<{ data: MessageResponse[]; total: number }> {
-        const { limit = 6, page = 0, chatRoomId, message, senderId } = query;
+        const { limit = 10, page = 0, chatRoomId, message, senderId } = query;
         const offset = page * limit;
         const filter: any = {};
         // Lọc theo nội dung tin nhắn (tìm kiếm không phân biệt chữ hoa/thường)
@@ -34,14 +34,15 @@ export class MessageService {
         // Thực hiện truy vấn tối ưu
         const [data, total] = await Promise.all([
             this.MessageModel.find(filter)
-                // .sort({ createdAt: -1 })
+                .sort({ createdAt: -1 }) 
                 .skip(offset)
                 .limit(limit)
-                .select("_id message senderId file")
+                .select("_id message senderId file createdAt")
                 .populate("senderId", "_id fullName avatar")
                 .lean<MessageResponse[]>()
+                .sort({ createdAt: 1 }) 
                 .exec(),
-            this.MessageModel.countDocuments(filter).exec()
+            this.MessageModel.countDocuments(filter).exec(),
         ]);
         return { data, total };
     }
@@ -82,5 +83,13 @@ export class MessageService {
             throw new Error(`Message with id ${_id} not found`);
         }
         return message;
+    }
+
+    async DeleteManyMessage(chatRoomId: string): Promise<string> {
+        const messages = await this.MessageModel.deleteMany({ chatRoomId });
+        if (!messages) {
+            throw new Error(`Message with chatRoomId ${chatRoomId} not found`);
+        }
+        return `Delete Message success`;    
     }
 }
