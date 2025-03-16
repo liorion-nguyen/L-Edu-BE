@@ -12,11 +12,13 @@ async function bootstrap() {
       transform: true,
     }),
   )
+
   app.enableCors({
-    origin: "*", 
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
-    allowedHeaders: "Content-Type, Authorization",
-  });
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    allowedHeaders: "*"
+  }); 
+  
   
   const config = new DocumentBuilder()
   .setTitle('API L-Edu')
