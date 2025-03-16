@@ -21,28 +21,29 @@ export class ChatRoomService {
         const { limit = 6, page = 0, UserIdJoin, name } = query;
         const offset = page * limit;
         const filter: any = {};
-    
         if (name) {
             filter.name = { $regex: name, $options: "i" };
         }
-    
         if (UserIdJoin) {
             filter.membersId = { $in: [UserIdJoin] };
         }
+        filter.$or = [
+            { membersId: { $in: [user._id] } },
+            { createdBy: user._id }
+        ];
     
         const [data, total] = await Promise.all([
             this.ChatRoomModel.find(filter)
                 .sort({ createdAt: -1 })
                 .skip(offset)
                 .limit(limit)
-                .select("_id name membersId type")
+                .select("_id name membersId type createdBy")
                 .lean<ChatRoomResponse[]>()
                 .exec(),
             this.ChatRoomModel.countDocuments(filter).exec()
         ]);
         return { data, total };
-    }    
-
+    }      
 
     async CreateChatRoom(body: CreateChatRoomRequest, user): Promise<ChatRoom> {
         const ChatRoomExist = await this.ChatRoomModel.findOne({ name: body.name });

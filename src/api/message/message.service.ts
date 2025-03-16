@@ -34,11 +34,11 @@ export class MessageService {
         // Thực hiện truy vấn tối ưu
         const [data, total] = await Promise.all([
             this.MessageModel.find(filter)
-                .sort({ createdAt: -1 })
+                // .sort({ createdAt: -1 })
                 .skip(offset)
                 .limit(limit)
-                .select("_id message senderId file") 
-                .populate("senderId", "_id fullName avatar") 
+                .select("_id message senderId file")
+                .populate("senderId", "_id fullName avatar")
                 .lean<MessageResponse[]>()
                 .exec(),
             this.MessageModel.countDocuments(filter).exec()
@@ -46,13 +46,19 @@ export class MessageService {
         return { data, total };
     }
 
-    async CreateMessage(body: CreateMessageRequest, user): Promise<Message> {
-        const Message = new this.MessageModel({
+    async CreateMessage(body: CreateMessageRequest, user): Promise<MessageResponse> {
+        const message = new this.MessageModel({
             ...body,
             senderId: user._id,
         });
-        return Message.save();
+        const savedMessage = await message.save();
+    
+        return this.MessageModel.findById(savedMessage._id)
+            .populate("senderId", "_id fullName avatar")
+            .lean<MessageResponse>()
+            .exec();
     }
+    
 
     async UpdateMessage(id: string, updateData: UpdateMessageRequest): Promise<Message> {
         const Message = await this.MessageModel.findByIdAndUpdate(id, updateData, { new: true });
