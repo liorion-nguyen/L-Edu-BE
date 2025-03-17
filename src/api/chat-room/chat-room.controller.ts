@@ -20,10 +20,10 @@ export class ChatRoomController {
         }
     }
 
-    @Get(":id")
-    async GetChatRoom(@Param('id') id: string, @Query() query: GetMsgChatRoomRequest, @Req() req) {
+    @Get("/information/:id")
+    async GetInformationChatRoom(@Param('id') id: string, @Req() req) {
         try {
-            return successResponse(await this.ChatRoomervice.GetChatRoom(id, req.user, query));
+            return successResponse(await this.ChatRoomervice.GetInformationChatRoom(id, req.user));
         } catch (error) {
             throw new CommonException(
                 error.message,
@@ -32,10 +32,10 @@ export class ChatRoomController {
         }
     }
 
-    @Get("/information:id")
-    async GetInformationChatRoom(@Param('id') id: string, @Req() req) {
+    @Get(":id")
+    async GetChatRoom(@Param('id') id: string, @Query() query: GetMsgChatRoomRequest, @Req() req) {
         try {
-            return successResponse(await this.ChatRoomervice.GetInformationChatRoom(id, req.user));
+            return successResponse(await this.ChatRoomervice.GetChatRoom(id, req.user, query));
         } catch (error) {
             throw new CommonException(
                 error.message,

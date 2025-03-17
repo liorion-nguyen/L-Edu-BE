@@ -7,7 +7,9 @@ export class ChatRoomResponse {
 
     name: string;
 
-    members: UserCoreResponse[] | string[];
+    members?: UserCoreResponse[];
+
+    membersId?: string[];
 
     type: TypeChatRoom;
 

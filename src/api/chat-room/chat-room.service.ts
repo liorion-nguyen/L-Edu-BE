@@ -124,7 +124,7 @@ export class ChatRoomService {
 
         return {
             _id: ChatRoom._id as string,
-            members: ChatRoom.membersId,
+            membersId: ChatRoom.membersId,
             name: ChatRoom.name,
             type: ChatRoom.type,
             createdBy: ChatRoom.createdBy
