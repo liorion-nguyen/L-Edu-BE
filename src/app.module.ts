@@ -11,6 +11,7 @@ import { SessionModule } from './api/session/session.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ChatRoomModule } from './api/chat-room/chat-room.module';
 import { MessageModule } from './api/message/message.module';
+import { AppController } from './app.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,7 +35,7 @@ import { MessageModule } from './api/message/message.module';
     ChatRoomModule,
     MessageModule
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [
     {
       provide: APP_GUARD,

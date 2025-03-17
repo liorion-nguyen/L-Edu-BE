@@ -32,6 +32,18 @@ export class ChatRoomController {
         }
     }
 
+    @Get("/information:id")
+    async GetInformationChatRoom(@Param('id') id: string, @Req() req) {
+        try {
+            return successResponse(await this.ChatRoomervice.GetInformationChatRoom(id, req.user));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
     @Post()
     async CreateChatRoom(@Body() body: CreateChatRoomRequest, @Req() req) {
         try {

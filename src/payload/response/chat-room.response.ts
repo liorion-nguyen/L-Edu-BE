@@ -7,11 +7,11 @@ export class ChatRoomResponse {
 
     name: string;
 
-    members: UserCoreResponse[];
+    members: UserCoreResponse[] | string[];
 
     type: TypeChatRoom;
 
     createdBy: string;
 
-    messages: MessageResponse[];
+    messages?: MessageResponse[];
 }

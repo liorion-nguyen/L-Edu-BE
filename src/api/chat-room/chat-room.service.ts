@@ -109,4 +109,26 @@ export class ChatRoomService {
         };
     }
 
+    async GetInformationChatRoom(_id: string, user): Promise<ChatRoomResponse> {
+        const ChatRoom = await this.ChatRoomModel.findById(_id);
+        if (!ChatRoom) {
+            throw new Error(`ChatRoom with id ${_id} not found`);
+        }
+
+        if (user.role !== Role.ADMIN) {
+            const isStudentEnrolled = ChatRoom.membersId.some((memberId: string) => memberId == user._id);
+            if (!isStudentEnrolled) {
+                throw new Error(`Member with id ${_id} is not enrolled in this ChatRoom`);
+            }
+        }
+
+        return {
+            _id: ChatRoom._id as string,
+            members: ChatRoom.membersId,
+            name: ChatRoom.name,
+            type: ChatRoom.type,
+            createdBy: ChatRoom.createdBy
+        };
+    }
+
 }
