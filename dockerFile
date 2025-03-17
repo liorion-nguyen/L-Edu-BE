@@ -1,0 +1,37 @@
+# Sử dụng Node.js 18 với Alpine để có image nhỏ gọn
+FROM node:18-alpine AS builder
+
+# Thiết lập thư mục làm việc
+WORKDIR /app
+
+# Cài đặt pnpm (nếu chưa có sẵn trong image)
+RUN npm install -g pnpm
+
+# Sao chép file package.json và pnpm-lock.yaml để tối ưu cache
+COPY package.json pnpm-lock.yaml ./
+
+# Cài đặt dependencies
+RUN pnpm install --frozen-lockfile
+
+# Sao chép toàn bộ mã nguồn vào container
+COPY . .
+
+# Build ứng dụng
+RUN pnpm run build
+
+# ----- Sử dụng một image nhẹ hơn để chạy app -----
+FROM node:18-alpine
+
+# Thiết lập thư mục làm việc
+WORKDIR /app
+
+# Sao chép thư mục `dist` và `node_modules` từ bước build
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Expose cổng ứng dụng
+EXPOSE 8000
+
+# Chạy ứng dụng ở môi trường production
+CMD ["node", "--max-old-space-size=2048", "dist/main.js"]
