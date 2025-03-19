@@ -68,8 +68,8 @@ export class ChatRoomController {
         }
     }
 
-    @Delete()
-    async DeleteChatRoom(@Query("id") id: string) {
+    @Delete(":id")
+    async DeleteChatRoom(@Param("id") id: string) {
         try {
             return successResponse(await this.ChatRoomervice.DeleteChatRoom(id));
         } catch (error) {

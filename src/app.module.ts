@@ -12,6 +12,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ChatRoomModule } from './api/chat-room/chat-room.module';
 import { MessageModule } from './api/message/message.module';
 import { AppController } from './app.controller';
+import { CloudinaryModule } from './api/cloudinary/cloudinary.module';
+import { ChatGateway } from './api/gateway/chat.gateway';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -33,7 +35,8 @@ import { AppController } from './app.controller';
     CourseModule,
     SessionModule,
     ChatRoomModule,
-    MessageModule
+    MessageModule,
+    CloudinaryModule
   ],
   controllers: [AppController],
   providers: [
@@ -41,6 +44,7 @@ import { AppController } from './app.controller';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    ChatGateway
   ],
 })
 export class AppModule implements NestModule {

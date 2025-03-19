@@ -5,8 +5,7 @@ import { TypeFile } from "src/enums/message.enum";
 export class File {
     url: string;
     type: TypeFile;
-}
-
+}  
 @Schema({ timestamps: true })
 export class Message extends Document {
     @Prop({ required: true, type: MongooseSchema.Types.ObjectId, ref: "ChatRoom", description: 'Chat Room ID' })

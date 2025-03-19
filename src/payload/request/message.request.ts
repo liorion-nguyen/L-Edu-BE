@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import { IsNotEmpty, IsOptional, IsString } from "class-validator";
-import { File } from "src/scheme/message.schema";
 
 export class CreateMessageRequest {
     @ApiProperty({ example: 'chatroom1', description: 'Chat Room ID' })
@@ -13,9 +12,9 @@ export class CreateMessageRequest {
     @IsOptional()
     message?: string;
 
-    @ApiProperty({ example: { url: 'https://example.com/file.pdf', type: 'PDF' }, description: 'File attachment' })
+    @ApiProperty({ example: 'File ABC.png' , description: 'File attachment' })
     @IsOptional()
-    file?: File;
+    file?: Express.Multer.File;
 }
 
 export class UpdateMessageRequest extends PartialType(CreateMessageRequest) { }
