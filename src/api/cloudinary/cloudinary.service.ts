@@ -6,32 +6,54 @@ import streamifier from 'streamifier';
 @Injectable()
 export class CloudinaryService {
     async uploadFile(file: Express.Multer.File): Promise<{ secure_url: string; type: TypeFile }> {
+        console.log(file);
+    
         return new Promise((resolve, reject) => {
             const resourceType = this.getResourceType(file.mimetype);
-
+    
+            const fileName = file.originalname.split('.').slice(0, -1).join('.') || 'unknown'; // Lấy tên file gốc (không bao gồm phần mở rộng)
+            const fileExtension = file.originalname.split('.').pop()?.toLowerCase() || ''; // Lấy phần mở rộng file (ví dụ: ts, js)
+    
+            const publicId = `${fileName}_${Date.now()}`; // Đảm bảo tên file là duy nhất bằng cách thêm timestamp
+    
             const uploadStream = cloudinary.uploader.upload_stream(
-                { resource_type: resourceType },
+                {
+                    resource_type: resourceType,
+                    public_id: publicId, // Sử dụng tên file tùy chỉnh
+                    format: fileExtension, // Đặt định dạng file nếu có
+                },
                 (error, result) => {
                     if (error) return reject(error);
-                    
-                    const fileFormat = result.format ? result.format.toLowerCase() : '';
+    
+                    // Lấy định dạng file từ Cloudinary hoặc suy luận từ tên file
+                    let fileFormat = result?.format ? result.format.toLowerCase() : '';
+                    if (!fileFormat) {
+                        const mimeType = file.mimetype; // Ví dụ: 'text/html'
+                        fileFormat = mimeType.split('/')[1]?.toLowerCase() || '';
+                    }
+                    if (!fileFormat) {
+                        fileFormat = fileExtension || 'unknown';
+                    }
+    
+                    // Xác định loại file
                     let type: TypeFile;
-
                     if (resourceType === 'image') {
                         type = TypeFile.IMAGE;
                     } else if (resourceType === 'video') {
                         type = TypeFile.VIDEO;
                     } else {
-                        type = TypeFile.FILE; // Các file như pdf, docx, csv, txt...
+                        type = TypeFile.FILE;
                     }
-
+    
                     resolve({ secure_url: result.secure_url, type });
                 }
             );
-
+    
             streamifier.createReadStream(file.buffer).pipe(uploadStream);
         });
     }
+    
+    
 
     async deleteFileByUrl(url: string): Promise<{ result: string }> {
         const { publicId, resourceType } = this.extractPublicIdAndType(url);

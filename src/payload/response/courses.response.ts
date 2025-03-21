@@ -3,6 +3,7 @@ import { Discount, Price } from "src/scheme/course.schema";
 import { SessionCoreResponse } from "./session.response";
 import { Status } from "src/enums/course.enum";
 import { UserCoreResponse } from "./users.response";
+import { Role } from "src/enums/user.enum";
 
 export class CourseResponse {
     _id: string;
@@ -30,4 +31,18 @@ export class CourseResponse {
     mode?: string;
 
     instructorId?: string;
+}
+
+export class MyCourseResponse {
+    _id: string;
+
+    name: string;
+
+    instructor: UserCoreResponse | null;
+
+    duration: number;
+
+    numberOfSessionCurrent: number;
+
+    role: Role;
 }

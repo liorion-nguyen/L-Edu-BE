@@ -77,6 +77,11 @@ export class CreateUserRequest {
     @IsOptional()
     @ApiPropertyOptional({ example: 'ACTIVE', description: 'Trạng thái' })
     status?: Status;
+
+    @IsString()
+    @IsOptional()
+    @ApiPropertyOptional({ example: 'Trang Blog cá nhân', description: 'Bio person' })
+    bio?: string;
 }
 
 export class UpdateUserRequest extends PartialType(CreateUserRequest) {

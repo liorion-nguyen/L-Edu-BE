@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { CreateCourseRequest, SearchCourseRequest, UpdateCourseRequest } from "src/payload/request/courses.request";
-import { CourseResponse } from "src/payload/response/courses.response";
+import { CourseResponse, MyCourseResponse } from "src/payload/response/courses.response";
 import { Course } from "src/scheme/course.schema";
 import { UserService } from "../users/users.service";
 import { SessionService } from "../session/session.service";
@@ -24,11 +24,11 @@ export class CoursesService {
         const { limit = 6, page = 0 } = query;
         const offset = page * limit;
         const filter: any = {};
-    
+
         if (query.name) {
             filter.name = { $regex: query.name, $options: "i" };
         }
-    
+
         const data = await this.courseModel
             .find(filter)
             .sort({ createdAt: -1 })
@@ -36,9 +36,9 @@ export class CoursesService {
             .limit(limit)
             .lean()
             .exec();
-    
+
         const total = await this.courseModel.countDocuments(filter).exec();
-    
+
         const coursesWithInstructor: CourseResponse[] = await Promise.all(
             data.map(async (course) => {
                 if (course.status != Status.ACTIVE) {
@@ -46,7 +46,7 @@ export class CoursesService {
                 }
                 let mode = Mode.OPEN;
                 let instructor: UserCoreResponse | null = null;
-    
+
                 if (course.instructorId) {
                     try {
                         instructor = await this.userService.getUserCore(course.instructorId);
@@ -54,14 +54,14 @@ export class CoursesService {
                         console.error(`Lỗi lấy instructor cho course ${course._id}:`, error);
                     }
                 }
-    
+
                 if (user.role !== Role.ADMIN) {
                     const isStudentEnrolled = course.students.some((studentId: string) => studentId == user._id);
                     if (!isStudentEnrolled) {
                         mode = Mode.CLOSE;
                     }
                 }
-    
+
                 return {
                     ...course,
                     _id: course._id.toString(),
@@ -70,14 +70,46 @@ export class CoursesService {
                 };
             })
         );
-    
+
         coursesWithInstructor.sort((a, b) => (a.mode === Mode.OPEN ? -1 : 1));
-    
+
         return {
             data: coursesWithInstructor,
             total,
         };
     }
+
+    async MyCourse(user): Promise<MyCourseResponse[]> {
+        let courses = [];
+
+        const coursesTeacher = await this.courseModel.find({ instructorId: user._id })
+        .populate('instructorId', '_id fullName avatar');
+        if (coursesTeacher) {
+            courses = coursesTeacher.map((course) => ({
+                _id: course._id.toString(),
+                name: course.name,
+                instructor: course.instructorId,
+                duration: course.duration,
+                numberOfSessionCurrent: course.sessions.length,
+                role: Role.TEACHER,
+            }));   
+        }
+        const coursesStudent = await this.courseModel.find({ students: { $in: [user._id] } })
+        .populate('instructorId', '_id fullName avatar');
+        if (coursesStudent) {
+            courses = courses.concat(coursesStudent.map((course) => ({
+                _id: course._id.toString(),
+                name: course.name,
+                instructor: course.instructorId,
+                duration: course.duration,
+                numberOfSessionCurrent: course.sessions.length,
+                role: Role.STUDENT,
+            })));
+        }
+
+        return courses;
+    }
+
 
     async CreateCourse(body: CreateCourseRequest): Promise<Course> {
         const courseExist = await this.courseModel.findOne({ name: body.name });
@@ -137,7 +169,7 @@ export class CoursesService {
 
         const sessions = course.sessions.length > 0
             ? await this.sessionService.getSessionsCore(_id, user.role) : [];
-            
+
         return {
             _id: course._id.toString(),
             name: course.name,

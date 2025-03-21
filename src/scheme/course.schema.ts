@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Schema as MongooseSchema } from "mongoose";
 import { Currency, Status, TypeDiscount } from "src/enums/course.enum";
 
 @Schema({ _id: false })
@@ -34,7 +34,7 @@ export class Course extends Document {
     @Prop({ type: Discount, required: false })
     discount?: Discount;
 
-    @Prop({ type: String, required: false, default: null })
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: "User", required: false, default: null })
     instructorId?: string;
 
     @Prop({ type: String, required: false, default: null })

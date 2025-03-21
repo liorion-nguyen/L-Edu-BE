@@ -21,6 +21,18 @@ export class CoursesController {
         }
     }
 
+    @Get("myCourse")
+    async MyCourse(@Req() req) {
+        try {
+            return successResponse(await this.courseService.MyCourse(req.user));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
     @Get(":id")
     async GetCourse(@Param('id') id: string, @Req() req) {
         try {
