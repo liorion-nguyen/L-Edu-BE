@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
+import { UseInterceptors } from "@nestjs/common";
+import { ApiConsumes, ApiOperation, ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateMessageRequest {
@@ -12,7 +13,7 @@ export class CreateMessageRequest {
     @IsOptional()
     message?: string;
 
-    @ApiProperty({ example: 'File ABC.png' , description: 'File attachment' })
+    @ApiProperty({ example: 'File ABC.png', description: 'File attachment' })
     @IsOptional()
     file?: Express.Multer.File;
 }

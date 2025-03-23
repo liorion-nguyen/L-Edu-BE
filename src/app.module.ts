@@ -14,6 +14,7 @@ import { MessageModule } from './api/message/message.module';
 import { AppController } from './app.controller';
 import { CloudinaryModule } from './api/cloudinary/cloudinary.module';
 import { ChatGateway } from './api/gateway/chat.gateway';
+import { PusherModule } from './api/pusher/pusher.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -36,7 +37,8 @@ import { ChatGateway } from './api/gateway/chat.gateway';
     SessionModule,
     ChatRoomModule,
     MessageModule,
-    CloudinaryModule
+    CloudinaryModule,
+    PusherModule
   ],
   controllers: [AppController],
   providers: [

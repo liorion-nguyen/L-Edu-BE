@@ -4,6 +4,7 @@ import { CommonException } from "src/common/exception/exception";
 import { MessageService } from "./message.service";
 import { CreateMessageRequest, SearchMessageRequest, UpdateMessageRequest } from "src/payload/request/message.request";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiBody, ApiConsumes, ApiOperation } from "@nestjs/swagger";
 
 @Controller("message")
 export class MessageController {
@@ -35,10 +36,26 @@ export class MessageController {
 
     @Post()
     @UseInterceptors(FileInterceptor('file', { limits: {} }))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+                chatRoomId: {
+                    type: 'string',
+                    description: '213981209321321',
+                },
+            },
+        },
+    })
     async CreateMessage(
+        @UploadedFile() file: Express.Multer.File,
         @Body() body: CreateMessageRequest,
-        @Req() req,
-        @UploadedFile() file?: Express.Multer.File 
+        @Req() req
     ) {
         try {
             return successResponse(await this.messageService.CreateMessage(body, file, req.user));

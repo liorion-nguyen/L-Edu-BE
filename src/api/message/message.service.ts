@@ -45,7 +45,7 @@ export class MessageService {
         return { data, total };
     }
 
-    async CreateMessage(body: CreateMessageRequest, file?: Express.Multer.File, user?): Promise<MessageResponse> {
+    async CreateMessage(body: CreateMessageRequest, file: Express.Multer.File, user?): Promise<MessageResponse> {
         let message = new this.MessageModel({
             ...body,
             senderId: user._id,
