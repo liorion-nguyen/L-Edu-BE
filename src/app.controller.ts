@@ -22,6 +22,9 @@ export class AppController {
     desiredEmployeeSalary: string;
   }): any {
     const { currentEmployeeSalary, desiredEmployeeSalary } = body;
+    console.log(`Current Salary: ${currentEmployeeSalary}`);
+    console.log(`Desired Salary: ${desiredEmployeeSalary}`);
+    
     const currentSalary = parseFloat(currentEmployeeSalary);
     const desiredSalary = parseFloat(desiredEmployeeSalary);
     const precentageIncrease = ((desiredSalary - currentSalary) / currentSalary) * 100;
