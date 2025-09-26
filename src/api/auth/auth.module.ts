@@ -1,12 +1,15 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { UserModule } from '../users/users.module';
+import { PassportModule } from '@nestjs/passport';
+import { FacebookStrategy } from 'src/common/guards/facebook.strategy';
+import { GitHubStrategy } from 'src/common/guards/github.strategy';
+import { GoogleStrategy } from 'src/common/guards/google.strategy';
 import { JwtStrategy } from 'src/common/guards/jwtStratergy';
-import { UserService } from '../users/users.service';
 import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
+import { UserModule } from '../users/users.module';
+import { UserService } from '../users/users.service';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 
 @Module({
   imports: [
@@ -18,7 +21,7 @@ import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
     forwardRef(() => UserModule),
     forwardRef(() => RefreshTokenModule),
   ],
-  providers: [AuthService, JwtStrategy, UserService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, FacebookStrategy, GitHubStrategy, UserService],
   controllers: [AuthController],
   exports: [AuthService],
 })

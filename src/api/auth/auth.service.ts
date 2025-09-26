@@ -1,18 +1,25 @@
 import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { CreateUserRequest, LoginRequest, LogoutRequest } from 'src/payload/request/users.request';
-import { User } from 'src/scheme/user.schema';
-import { UserService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from "crypto";
+import { Model } from 'mongoose';
 import { CommonException } from 'src/common/exception/exception';
-import { LoginResponse } from 'src/payload/response/users.response';
-import { RefreshToken } from 'src/scheme/refresh-token.scheme';
-import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
-import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenRequest } from 'src/payload/request/refresh-token.request';
+import { CreateUserRequest, LoginRequest, LogoutRequest } from 'src/payload/request/users.request';
 import { RefreshTokenResponse } from 'src/payload/response/refresh-token.response';
+import { LoginResponse } from 'src/payload/response/users.response';
+import { User } from 'src/scheme/user.schema';
+import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
+import { UserService } from '../users/users.service';
+
+interface OAuthUser {
+    email: string;
+    fullName: string;
+    avatar: string;
+    provider: string;
+    providerId: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -70,5 +77,52 @@ export class AuthService {
 
     async logout(refresh_token: LogoutRequest) {
         await this.refreshTokenService.deleteToken(refresh_token);
+    }
+
+    // OAuth Authentication
+    async validateOAuthUser(oauthUser: OAuthUser): Promise<LoginResponse> {
+        // First, check if user exists with the same email
+        let user = await this.userService.findUserByEmail(oauthUser.email);
+        
+        if (!user) {
+            // Create new user if doesn't exist
+            user = await this.createOAuthUser(oauthUser);
+        } else {
+            // Update existing user with OAuth info if needed
+            if (!user.provider || !user.providerId) {
+                user.provider = oauthUser.provider;
+                user.providerId = oauthUser.providerId;
+                user.avatar = oauthUser.avatar;
+                await user.save();
+            }
+        }
+
+        if (user.status === "INACTIVE") {
+            throw new CommonException("User is inactive", HttpStatus.UNAUTHORIZED);
+        }
+
+        // Generate JWT token
+        const payload = { email: user.email, sub: user._id, role: user.role };
+        const access_token = this.jwtService.sign(payload, {
+            secret: process.env.JWT_SECRET || "JWT_SECRET",
+            expiresIn: "7d",
+        });
+        const refresh_token = crypto.randomBytes(16).toString("hex");
+        await this.refreshTokenService.storeToken(user._id.toString(), refresh_token);
+        
+        return { access_token, refresh_token };
+    }
+
+    private async createOAuthUser(oauthUser: OAuthUser): Promise<User> {
+        const newUser = new this.userModel({
+            email: oauthUser.email,
+            fullName: oauthUser.fullName,
+            avatar: oauthUser.avatar,
+            provider: oauthUser.provider,
+            providerId: oauthUser.providerId,
+            // Don't set password for OAuth users
+        });
+        
+        return await newUser.save();
     }
 }

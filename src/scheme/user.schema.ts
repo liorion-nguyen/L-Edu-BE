@@ -25,11 +25,17 @@ class Phone {
 
 @Schema({ timestamps: true })
 export class User extends Document {
-    @Prop({ required: true })
-    password: string;
+    @Prop({ required: false })
+    password?: string;
 
     @Prop({ default: null })
     avatar?: string;
+
+    @Prop({ default: null })
+    provider?: string;
+
+    @Prop({ default: null })
+    providerId?: string;
 
     @Prop({ type: Address, required: false, default: null })
     address?: Address;
