@@ -7,6 +7,7 @@ import { UserModule } from '../users/users.module';
 import { JwtStrategy } from 'src/common/guards/jwtStratergy';
 import { UserService } from '../users/users.service';
 import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
+import { EmailVerificationModule } from '../email-verification/email-verification.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
     }),
     forwardRef(() => UserModule),
     forwardRef(() => RefreshTokenModule),
+    EmailVerificationModule,
   ],
   providers: [AuthService, JwtStrategy, UserService],
   controllers: [AuthController],

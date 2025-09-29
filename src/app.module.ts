@@ -16,6 +16,7 @@ import { CloudinaryModule } from './api/cloudinary/cloudinary.module';
 import { ChatGateway } from './api/gateway/chat.gateway';
 import { PusherModule } from './api/pusher/pusher.module';
 import { OtpModule } from './api/otp/otp.module';
+import { EmailVerificationModule } from './api/email-verification/email-verification.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -33,7 +34,8 @@ import { OtpModule } from './api/otp/otp.module';
     MessageModule,
     CloudinaryModule,
     PusherModule,
-    OtpModule
+    OtpModule,
+    EmailVerificationModule
   ],
   controllers: [AppController],
   providers: [
