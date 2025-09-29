@@ -19,3 +19,4 @@ export class EmailVerification {
 }
 
 export const EmailVerificationSchema = SchemaFactory.createForClass(EmailVerification);
+
