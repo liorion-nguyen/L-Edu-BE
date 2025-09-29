@@ -14,26 +14,4 @@ export class AppController {
   healthCheck(): object {
     return { status: 'ok', timestamp: new Date() };
   }
-
-  @Post('/jits')
-  @SkipAuth()
-  handleJits(@Body() body: {
-    currentEmployeeSalary: string;
-    desiredEmployeeSalary: string;
-  }): any {
-    const { currentEmployeeSalary, desiredEmployeeSalary } = body;
-    console.log(`Current Salary: ${currentEmployeeSalary}`);
-    console.log(`Desired Salary: ${desiredEmployeeSalary}`);
-    
-    const currentSalary = parseFloat(currentEmployeeSalary);
-    const desiredSalary = parseFloat(desiredEmployeeSalary);
-    const precentageIncrease = ((desiredSalary - currentSalary) / currentSalary) * 100;
-    console.log(`Current Salary: ${precentageIncrease}`);
-    return {
-      errorCode: 0, 
-      metadata: { 
-        precentageIncrease: precentageIncrease.toFixed(2)
-      }
-    };
-  }
 }

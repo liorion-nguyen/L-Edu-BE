@@ -71,4 +71,17 @@ export class AuthService {
     async logout(refresh_token: LogoutRequest) {
         await this.refreshTokenService.deleteToken(refresh_token);
     }
+
+    async resetPassword(email: string, newPassword: string): Promise<void> {
+        const user = await this.userService.findUserByEmail(email);
+        if (!user) {
+            throw new NotFoundException(`User with email ${email} not found`);
+        }
+
+        const hashPassword = await bcrypt.hash(newPassword, 10);
+        await this.userModel.updateOne(
+            { _id: user._id },
+            { $set: { password: hashPassword } }
+        );
+    }
 }
