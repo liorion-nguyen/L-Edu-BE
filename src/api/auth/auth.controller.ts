@@ -1,4 +1,5 @@
-import { Body, Controller, HttpStatus, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post, Request, Response, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { successResponse } from 'src/common/dto/response.dto';
 import { CommonException } from 'src/common/exception/exception';
@@ -85,6 +86,37 @@ export class AuthController {
                 error.message,
                 error.status || HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    @SkipAuth()
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    async googleAuth() {
+        // Guard sẽ redirect đến Google OAuth
+    }
+
+    @SkipAuth()
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    async googleAuthCallback(@Request() req, @Response() res) {
+        try {
+            const result = await this.authService.googleLogin(req.user);
+            
+            // Redirect to frontend with tokens and user info
+            const frontendUrl = process.env.URL_CLIENT || 'http://localhost:3000';
+            const params = new URLSearchParams({
+                access_token: result.access_token,
+                refresh_token: result.refresh_token,
+                user_info: JSON.stringify(result.user)
+            });
+            const redirectUrl = `${frontendUrl}/auth/google/callback?${params.toString()}`;
+            
+            res.redirect(redirectUrl);
+        } catch (error) {
+            console.error('Google callback error:', error);
+            const frontendUrl = process.env.URL_CLIENT || 'http://localhost:3000';
+            res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
         }
     }
 }

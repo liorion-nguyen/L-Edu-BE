@@ -122,4 +122,33 @@ export class AuthService {
             { $set: { password: hashPassword } }
         );
     }
+
+    async googleLogin(user: any): Promise<{ access_token: string; refresh_token: string; user: any }> {
+        try {
+            const payload = { email: user.email, sub: user._id, role: user.role };
+            const access_token = this.jwtService.sign(payload, {
+                secret: process.env.JWT_SECRET || "JWT_SECRET",
+                expiresIn: "7d",
+            });
+            const refresh_token = crypto.randomBytes(16).toString("hex");
+            await this.refreshTokenService.storeToken(user._id, refresh_token);
+            
+            // Trả về cả token và thông tin user
+            return { 
+                access_token, 
+                refresh_token,
+                user: {
+                    _id: user._id,
+                    email: user.email,
+                    fullName: user.fullName,
+                    avatar: user.avatar,
+                    role: user.role,
+                    status: user.status,
+                    googleId: user.googleId
+                }
+            };
+        } catch (error) {
+            throw new CommonException("Google login failed", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

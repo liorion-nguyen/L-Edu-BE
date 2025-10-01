@@ -13,10 +13,9 @@ import { ChatRoomModule } from './api/chat-room/chat-room.module';
 import { MessageModule } from './api/message/message.module';
 import { AppController } from './app.controller';
 import { CloudinaryModule } from './api/cloudinary/cloudinary.module';
-import { ChatGateway } from './api/gateway/chat.gateway';
 import { PusherModule } from './api/pusher/pusher.module';
 import { OtpModule } from './api/otp/otp.module';
-import { EmailVerificationModule } from './api/email-verification/email-verification.module';
+import { ChatModule } from './api/chat/chat.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -35,15 +34,14 @@ import { EmailVerificationModule } from './api/email-verification/email-verifica
     CloudinaryModule,
     PusherModule,
     OtpModule,
-    EmailVerificationModule
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    },
-    ChatGateway
+    }
   ],
 })
 export class AppModule implements NestModule {

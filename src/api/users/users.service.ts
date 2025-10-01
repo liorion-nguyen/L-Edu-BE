@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import * as bcrypt from 'bcryptjs';
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Role } from "src/enums/user.enum";
+import { Role, Status } from "src/enums/user.enum";
 import { SearchUserRequest, UpdateUserRequest } from "src/payload/request/users.request";
 import { UserCoreResponse } from "src/payload/response/users.response";
 import { User } from "src/scheme/user.schema";
@@ -66,6 +66,10 @@ export class UserService {
         return this.userModel.findOne({ email }).lean().exec();
     }
 
+    async findByEmail(email: string): Promise<User | null> {
+        return this.userModel.findOne({ email }).exec();
+    }
+
     async findUserById(id: any): Promise<User> {
         const user = await this.userModel.findById(id).select("-password").exec();
 
@@ -120,4 +124,52 @@ export class UserService {
                 throw new Error(`Failed to fetch sessions: ${error.message}`);
             }
         }
+
+    async updateGoogleId(userId: string, googleId: string): Promise<User> {
+        const user = await this.userModel.findByIdAndUpdate(
+            userId,
+            { googleId },
+            { new: true }
+        ).exec();
+        
+        if (!user) {
+            throw new NotFoundException(`User with id ${userId} not found`);
+        }
+        
+        return user;
+    }
+
+    async updateGoogleUserInfo(userId: string, googleId: string, avatar?: string): Promise<User> {
+        const updateData: any = { googleId };
+        
+        // Chỉ cập nhật avatar nếu Google có avatar
+        if (avatar) {
+            updateData.avatar = avatar;
+        }
+        
+        const user = await this.userModel.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true }
+        ).exec();
+        
+        if (!user) {
+            throw new NotFoundException(`User with id ${userId} not found`);
+        }
+        
+        return user;
+    }
+
+    async createFromGoogle(googleUser: any): Promise<User> {
+        const user = new this.userModel({
+            googleId: googleUser.googleId,
+            email: googleUser.email,
+            fullName: googleUser.fullName,
+            avatar: googleUser.avatar || null, // Set avatar từ Google, nếu không có thì null
+            status: Status.ACTIVE,
+            role: Role.STUDENT,
+        });
+
+        return await user.save();
+    }
 }

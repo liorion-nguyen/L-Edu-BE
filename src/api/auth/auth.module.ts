@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from '../users/users.module';
 import { JwtStrategy } from 'src/common/guards/jwtStratergy';
+import { GoogleStrategy } from 'src/common/strategies/google.strategy';
 import { UserService } from '../users/users.service';
 import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
 import { EmailVerificationModule } from '../email-verification/email-verification.module';
@@ -20,7 +21,7 @@ import { EmailVerificationModule } from '../email-verification/email-verificatio
     forwardRef(() => RefreshTokenModule),
     EmailVerificationModule,
   ],
-  providers: [AuthService, JwtStrategy, UserService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, UserService],
   controllers: [AuthController],
   exports: [AuthService],
 })
