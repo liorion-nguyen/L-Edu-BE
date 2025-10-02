@@ -92,13 +92,13 @@ export class SessionService {
                 throw new NotFoundException(`No sessions found for courseId: ${courseId}`);
             }
             return sessions.map(({ _id, sessionNumber, title, views, notesMd, videoUrl, quizId, mode }) => ({
-                _id,
+                _id: _id.toString(),
                 sessionNumber: Number(sessionNumber),
                 title,
                 views: Number(views),
-                modeNoteMd: notesMd ? notesMd?.mode : "CLOSE",
-                modeVideoUrl: videoUrl ? videoUrl?.mode : "CLOSE",
-                modeQuizId: quizId ? quizId?.mode : "CLOSE",
+                modeNoteMd: notesMd ? (typeof notesMd === 'object' && notesMd ? (notesMd as any).mode : "CLOSE") : "CLOSE",
+                modeVideoUrl: videoUrl ? (typeof videoUrl === 'object' && videoUrl ? (videoUrl as any).mode : "CLOSE") : "CLOSE",
+                modeQuizId: quizId ? (typeof quizId === 'object' && quizId ? (quizId as any).mode : "CLOSE") : "CLOSE",
                 mode: role == Role.ADMIN ? Mode.OPEN : mode ?? "CLOSE"
             })) as SessionCoreResponse[];
 
@@ -121,11 +121,11 @@ export class SessionService {
                 ...session.toJSON(),
                 mode: Mode.OPEN,
                 views: session.views + 1
-            };
+            } as Session;
         }
         return {
             ...session.toJSON(),
             views: session.views + 1
-        };
+        } as Session;
     }
 }

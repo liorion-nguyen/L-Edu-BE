@@ -1,57 +1,94 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { Mode } from 'src/enums/session.enum';
 
-export class NotesMd {
-    @Prop({ required: true, type: String, description: 'Mode of the notesMd' })
-    mode: Mode;
+export type SessionDocument = Session & Document;
 
-    @Prop({ required: true, type: String, description: 'Markdown content for session notes' })
-    notesMd: string;
+export enum SessionStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED',
 }
 
-export class VideoUrl {
-    @Prop({ required: true, type: String, description: 'Mode of the videoUrl' })
-    mode: Mode;
-
-    @Prop({ required: true, type: String, description: 'URL of the session video' })
-    videoUrl: string;
-}
-
-
-export class QuizId {
-    @Prop({ required: true, type: String, description: 'Quiz ID linked to this session' })
-    quizId: string;
-
-    @Prop({ required: true, type: String, description: 'Mode of the quizId' })
-    mode: Mode;
+export enum SessionType {
+  VIDEO = 'VIDEO',
+  TEXT = 'TEXT',
+  QUIZ = 'QUIZ',
+  ASSIGNMENT = 'ASSIGNMENT',
 }
 
 @Schema({ timestamps: true })
-export class Session extends Document {
-    @Prop({ required: true, type: String, description: 'Course ID' })
-    courseId: string;
+export class Session {
+  @Prop({ required: true, maxlength: 200 })
+  title: string;
 
-    @Prop({ required: true, type: String, description: 'Session number in the course' })
-    sessionNumber: string;
+  @Prop({ required: true, maxlength: 2000 })
+  description: string;
 
-    @Prop({ required: true, type: String, description: 'Title of the session' })
-    title: string;
+  @Prop({ required: true })
+  courseId: string;
 
-    @Prop({ default: 0, type: Number, description: 'Number of views for the session' })
-    views: number;
+  @Prop({ required: true })
+  instructorId: string;
 
-    @Prop({ type: QuizId, required: false, description: 'Quiz ID linked to this session' })
-    quizId?: QuizId;
+  @Prop({ enum: SessionType, default: SessionType.VIDEO })
+  type: SessionType;
 
-    @Prop({ type: VideoUrl, required: false, description: 'URL of the session video' })
-    videoUrl?: VideoUrl;
+  @Prop({ enum: SessionStatus, default: SessionStatus.DRAFT })
+  status: SessionStatus;
 
-    @Prop({ type: NotesMd, required: false, description: 'Markdown content for session notes' })
-    notesMd?: NotesMd;
+  @Prop({ default: 0 })
+  duration: number; // in minutes
 
-    @Prop({ type: String, default: Mode.OPEN, description: 'Mode of the session' })
-    mode: Mode;
+  @Prop({ default: 0 })
+  order: number; // order within course
+
+  @Prop({ default: 1 })
+  sessionNumber: number; // session number within course
+
+  @Prop({ type: Object })
+  videoUrl?: {
+    videoUrl?: string;
+    mode?: string;
+  };
+
+  @Prop()
+  thumbnail?: string;
+
+  @Prop({ type: Object })
+  notesMd?: {
+    notesMd?: any;
+    mode?: string;
+  };
+
+  @Prop({ type: Object })
+  quizId?: {
+    quizId?: string;
+    mode?: string;
+  };
+
+  @Prop()
+  mode?: string; // Session mode (OPEN/CLOSE)
+
+  @Prop({ type: [String], default: [] })
+  attachments: string[];
+
+  @Prop({ type: [String], default: [] })
+  students: string[];
+
+  @Prop({ default: 0 })
+  views: number;
+
+  @Prop({ default: 0 })
+  completionRate: number;
+
+  @Prop()
+  content?: string; // Rich text content for TEXT type sessions
+
+  @Prop({ type: Object })
+  quizData?: any; // JSON data for QUIZ type sessions
+
+  @Prop({ type: Object })
+  assignmentData?: any; // JSON data for ASSIGNMENT type sessions
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

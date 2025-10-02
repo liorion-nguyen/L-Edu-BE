@@ -1,5 +1,5 @@
 import { IsString } from "class-validator";
-import { Discount, Price } from "src/scheme/course.schema";
+import { Discount } from "src/scheme/course.schema";
 import { SessionCoreResponse } from "./session.response";
 import { Status } from "src/enums/course.enum";
 import { UserCoreResponse } from "./users.response";
@@ -12,7 +12,7 @@ export class CourseResponse {
 
     description: string;
 
-    price: Price;
+    price: number;
 
     discount?: Discount;
 

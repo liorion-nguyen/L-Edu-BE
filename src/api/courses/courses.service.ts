@@ -29,6 +29,10 @@ export class CoursesService {
             filter.name = { $regex: query.name, $options: "i" };
         }
 
+        if (query.categoryId) {
+            filter.categoryId = query.categoryId;
+        }
+
         const data = await this.courseModel
             .find(filter)
             .sort({ createdAt: -1 })
@@ -56,7 +60,7 @@ export class CoursesService {
                 }
 
                 if (user.role !== Role.ADMIN) {
-                    const isStudentEnrolled = course.students.some((studentId: string) => studentId == user._id);
+                    const isStudentEnrolled = course.students.some((studentId: any) => studentId.toString() === user._id.toString());
                     if (!isStudentEnrolled) {
                         mode = Mode.CLOSE;
                     }
@@ -155,11 +159,10 @@ export class CoursesService {
         if (!course) {
             throw new Error(`Course with id ${_id} not found`);
         }
-
         if (user.role !== Role.ADMIN) {
-            const isStudentEnrolled = course.students.some((studentId: string) => studentId == user._id);
+            const isStudentEnrolled = course.students.some((studentId: any) => studentId.toString() === user._id.toString());
             if (!isStudentEnrolled) {
-                throw new Error(`Student with id ${_id} is not enrolled in this course`);
+                throw new Error(`Student with id ${user._id} is not enrolled in this course`);
             }
         }
 

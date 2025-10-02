@@ -83,6 +83,9 @@ export class UserService {
         if (body.password) {
             throw new Error("Password cannot be updated");
         }
+        if (body.email) {
+            throw new Error("Email cannot be updated");
+        }
         const user = await this.userModel.findByIdAndUpdate({ _id: id }, body, { new: true });
         if (!user) {
             throw new Error(`User with id ${id} not found`);

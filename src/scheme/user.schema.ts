@@ -14,15 +14,6 @@ class Address {
     ward: string;
 }
 
-@Schema({ _id: false })
-class Phone {
-    @Prop({ required: true })
-    country: string;
-
-    @Prop({ required: true })
-    number: string;
-}
-
 @Schema({ timestamps: true })
 export class User extends Document {
     @Prop({ required: false })
@@ -37,8 +28,8 @@ export class User extends Document {
     @Prop({ type: Address, required: false, default: null })
     address?: Address;
 
-    @Prop({ type: Phone, required: false, default: null })
-    phone?: Phone;
+    @Prop({ required: false, default: null })
+    phone?: string;
 
     @Prop({ required: true })
     fullName: string;
@@ -57,6 +48,13 @@ export class User extends Document {
 
     @Prop({ default: null })
     birthday?: Date;
+
+    @Prop({ default: '' })
+    bio: string;
+
+    @Prop({ default: null })
+    lastLogin?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+export type UserDocument = User & Document;

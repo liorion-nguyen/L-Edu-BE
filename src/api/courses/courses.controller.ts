@@ -4,15 +4,33 @@ import { CommonException } from "src/common/exception/exception";
 import { SkipAuth } from "src/config/skip.auth";
 import { CoursesService } from "./courses.service";
 import { CreateCourseRequest, SearchCourseRequest, UpdateCourseRequest } from "src/payload/request/courses.request";
+import { CategoryService } from "../dashboard/category.service";
 
 @Controller("courses")
 export class CoursesController {
-    constructor(private readonly courseService: CoursesService) { }
+    constructor(
+        private readonly courseService: CoursesService,
+        private readonly categoryService: CategoryService
+    ) { }
 
     @Get("search")
     async Search(@Query() query: SearchCourseRequest, @Req() req) {
         try {
             return successResponse(await this.courseService.Search(query, req.user));
+        } catch (error) {
+            throw new CommonException(
+                error.message,
+                error.status || HttpStatus.INTERNAL_SERVER_ERROR
+            )
+        }
+    }
+
+    @Get("categories")
+    @SkipAuth()
+    async GetCategories() {
+        try {
+            const result = await this.categoryService.findAll({ isActive: true });
+            return successResponse(result.categories);
         } catch (error) {
             throw new CommonException(
                 error.message,

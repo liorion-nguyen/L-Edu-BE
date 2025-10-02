@@ -11,25 +11,16 @@ export class Discount {
     number: number;
 } 
 
-@Schema({ _id: false })
-export class Price {
-    @Prop({ required: true })
-    currency: Currency;
-    
-    @Prop({ required: true, type: Number })
-    number?: number;
-}
-
 @Schema({ timestamps: true })
 export class Course extends Document {
     @Prop({ required: true, type: String })
     name: string;
     
-    @Prop({ required: true, type: String })
+    @Prop({ required: true, type: String, maxlength: 10000 })
     description: string;
     
-    @Prop({ required: true, type: Price })
-    price: Price;
+    @Prop({ required: true, type: Number })
+    price: number;
     
     @Prop({ type: Discount, required: false })
     discount?: Discount;
@@ -40,10 +31,16 @@ export class Course extends Document {
     @Prop({ type: String, required: false, default: null })
     category?: string;
 
+    @Prop({ type: MongooseSchema.Types.ObjectId, ref: "Category", required: false, default: null })
+    categoryId?: string;
+
     @Prop({ type: String, required: false, default: null })
     cover: string;
 
-    @Prop({ required: false, type: [String], default: [] })
+    @Prop({ type: String, required: false, default: null })
+    icon: string;
+
+    @Prop({ required: false, type: [MongooseSchema.Types.ObjectId], ref: "User", default: [] })
     students: string[];
 
     @Prop({ required: false, type: [String], default: [] })
@@ -54,6 +51,13 @@ export class Course extends Document {
     
     @Prop({ type: String, enum: Status, default: Status.ACTIVE })
     status: Status;
+
+    @Prop({ default: 0 })
+    averageRating: number;
+
+    @Prop({ default: 0 })
+    totalReviews: number;
 }
 
 export const CourseSchema = SchemaFactory.createForClass(Course);
+export type CourseDocument = Course & Document;

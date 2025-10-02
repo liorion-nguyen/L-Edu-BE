@@ -16,6 +16,8 @@ import { CloudinaryModule } from './api/cloudinary/cloudinary.module';
 import { PusherModule } from './api/pusher/pusher.module';
 import { OtpModule } from './api/otp/otp.module';
 import { ChatModule } from './api/chat/chat.module';
+import { DashboardModule } from './api/dashboard/dashboard.module';
+import { ReviewModule } from './api/review/review.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -35,6 +37,8 @@ import { ChatModule } from './api/chat/chat.module';
     PusherModule,
     OtpModule,
     ChatModule,
+    DashboardModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [

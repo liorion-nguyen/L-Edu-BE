@@ -21,15 +21,6 @@ class DiscountRequest {
     number: number;
 }
 
-class PriceRequest {
-    @ApiProperty({ example: "VND", description: "Đơn vị tiền tệ", enum: Currency })
-    @IsEnum(Currency)
-    currency: Currency;
-
-    @ApiProperty({ example: 1000000, description: "Giá tiền" })
-    @IsNumber()
-    number: number;
-}
 
 export class CreateCourseRequest {
     @ApiProperty({ example: "Lập trình Node.js", description: "Tên khóa học" })
@@ -42,10 +33,9 @@ export class CreateCourseRequest {
     @IsNotEmpty()
     description: string;
 
-    @ApiProperty({ type: PriceRequest, description: "Giá khóa học" })
-    @ValidateNested()
-    @Type(() => PriceRequest)
-    price: PriceRequest;
+    @ApiProperty({ example: 1000000, description: "Giá khóa học" })
+    @IsNumber()
+    price: number;
 
     @ApiPropertyOptional({ type: DiscountRequest, description: "Thông tin giảm giá (nếu có)" })
     @IsOptional()
@@ -107,6 +97,11 @@ export class SearchCourseRequest {
     @IsOptional()
     @IsString()
     name?: string;
+
+    @ApiPropertyOptional({ example: "65234b6d1d4a3c001f8a8b20", description: "ID danh mục khóa học" })
+    @IsOptional()
+    @IsString()
+    categoryId?: string;
 
     // @ApiPropertyOptional({ example: "100000", description: "Giá tiền khoá học" })
     // @IsOptional()
