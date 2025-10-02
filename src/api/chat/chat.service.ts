@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { Conversation, ConversationDocument } from 'src/scheme/conversation.schema';
 import { ChatMessage, ChatMessageDocument } from 'src/scheme/chat-message.schema';
 import { SendMessageDto } from './dto/chat.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,7 @@ export class ChatService {
     private configService: ConfigService,
     @InjectModel(Conversation.name) private conversationModel: Model<ConversationDocument>,
     @InjectModel(ChatMessage.name) private messageModel: Model<ChatMessageDocument>,
+    private cloudinaryService: CloudinaryService,
   ) {
     this.geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent';
@@ -75,6 +77,7 @@ export class ChatService {
       content: dto.content,
       role: 'user',
       isComplete: true,
+      imageUrls: dto.imageUrls || [],
     });
     const saved = await userMessage.save();
 
@@ -107,9 +110,47 @@ export class ChatService {
   }
 
   async clearConversation(conversationId: string): Promise<void> {
-    // Xóa tất cả tin nhắn trong conversation
+    console.log('🗑️ Clearing conversation:', conversationId);
+    
+    // Lấy tất cả messages để thu thập imageUrls
+    const messages = await this.messageModel.find({ conversationId }).exec();
+    console.log('📋 Found messages:', messages.length);
+    
+    const allImageUrls: string[] = [];
+    
+    messages.forEach((msg, index) => {
+      console.log(`📄 Message ${index + 1}:`, {
+        id: msg._id,
+        role: msg.role,
+        hasImages: msg.imageUrls && msg.imageUrls.length > 0,
+        imageCount: msg.imageUrls ? msg.imageUrls.length : 0,
+        imageUrls: msg.imageUrls
+      });
+      
+      if (msg.imageUrls && msg.imageUrls.length > 0) {
+        allImageUrls.push(...msg.imageUrls);
+      }
+    });
+    
+    console.log('📷 Total images to delete:', allImageUrls.length);
+    console.log('📷 Image URLs:', allImageUrls);
+    
+    // Xóa messages
     await this.messageModel.deleteMany({ conversationId });
-    console.log('🗑️ Cleared all messages in conversation:', conversationId);
+    console.log('✅ Messages deleted');
+    
+    // Xóa ảnh khỏi Cloudinary nếu có
+    if (allImageUrls.length > 0) {
+      try {
+        console.log('🗑️ Starting Cloudinary cleanup...');
+        const result = await this.cloudinaryService.deleteFilesByUrls(allImageUrls);
+        console.log('🗑️ Cloudinary cleanup result:', result);
+      } catch (error) {
+        console.error('❌ Failed to delete images from Cloudinary:', error);
+      }
+    } else {
+      console.log('ℹ️ No images to delete from Cloudinary');
+    }
   }
 
   async deleteConversation(userId: string): Promise<void> {

@@ -1,12 +1,17 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Req, Delete } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Req, Delete, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { CreateConversationDto, SendMessageDto, GetMessagesDto } from './dto/chat.dto';
 import { successResponse } from 'src/common/dto/response.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Get('my-conversation')
   async getMyConversation(@Req() req) {
@@ -64,5 +69,38 @@ export class ChatController {
       conversation: newConversation 
     });
   }
+
+  @Post('upload-image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new Error('File is missing');
+    }
+    console.log('📤 Uploading image to Cloudinary:', file.originalname);
+    const result = await this.cloudinaryService.uploadFile(file);
+    console.log('✅ Image uploaded:', result.secure_url);
+    return successResponse({ 
+      url: result.secure_url,
+      type: result.type,
+      fileName: file.originalname,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('test-delete-images')
+  async testDeleteImages(@Body() body: { urls: string[] }) {
+    try {
+      console.log('🧪 Testing image deletion:', body.urls);
+      const result = await this.cloudinaryService.deleteFilesByUrls(body.urls);
+      return successResponse({ 
+        message: 'Test completed',
+        result 
+      });
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      throw error;
+    }
+  }
+
 }
 

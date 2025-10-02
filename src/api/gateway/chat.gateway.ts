@@ -18,6 +18,20 @@ export class ChatGateway {
     private jwtService: JwtService,
   ) {}
 
+  private getMimeTypeFromUrl(url: string): string {
+    const extension = url.split('.').pop()?.toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'heic': 'image/heic',
+      'heif': 'image/heif',
+    };
+    return mimeTypes[extension || ''] || 'image/jpeg';
+  }
+
   async handleConnection(client: Socket) {
     try {
       console.log('🔌 New connection attempt:', client.id);
@@ -47,7 +61,7 @@ export class ChatGateway {
     }
   }
 
-  handleDisconnect(client: Socket) {
+    handleDisconnect(client: Socket) {
     console.log('👋 Client disconnected:', client.id);
   }
 
@@ -62,7 +76,11 @@ export class ChatGateway {
 
   @SubscribeMessage('send_message')
   async handleSendMessage(
-    @MessageBody() data: { conversationId: string; content: string },
+    @MessageBody() data: { 
+      conversationId: string; 
+      content: string; 
+      imageUrls?: string[];
+    },
     @ConnectedSocket() client: Socket,
   ) {
     try {
@@ -91,9 +109,14 @@ export class ChatGateway {
 
       // 1. Lưu tin nhắn user vào DB
       console.log('💾 Saving user message...');
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        console.log('   Images:', data.imageUrls.length, 'files');
+      }
+      
       const userMessage = await this.chatService.sendMessage({
         conversationId: data.conversationId,
         content: data.content,
+        imageUrls: data.imageUrls,
       }, client.data.userId);
 
       console.log('✅ User message saved:', (userMessage as any)._id);
@@ -163,30 +186,123 @@ Bây giờ hãy bắt đầu trò chuyện:`
       
       // Lấy lịch sử tin nhắn (không bao gồm message rỗng vừa tạo)
       const messages = await this.chatService.getMessages(conversationId);
-      const userConversation = messages
-        .filter(msg => msg.content && msg.content.trim() !== '') // Loại bỏ message rỗng
-        .filter(msg => msg.role === 'user' || msg.isComplete) // Chỉ lấy user messages và assistant messages đã complete
-        .map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model', // Gemini dùng 'model' thay vì 'assistant'
-          parts: [{ text: msg.content }]
-        }));
+      const userConversation = await Promise.all(
+        messages
+          .filter(msg => msg.content && msg.content.trim() !== '') // Loại bỏ message rỗng
+          .filter(msg => msg.role === 'user' || msg.isComplete) // Chỉ lấy user messages và assistant messages đã complete
+          .map(async msg => {
+            const parts: any[] = [{ text: msg.content || '' }];
+            
+            // Thêm ảnh nếu có (chỉ cho user messages)
+            if (msg.role === 'user' && msg.imageUrls && msg.imageUrls.length > 0) {
+              console.log('📷 Processing', msg.imageUrls.length, 'images for message');
+              
+              // Giới hạn số lượng ảnh để tránh timeout
+              const maxImages = 3;
+              const imagesToProcess = msg.imageUrls.slice(0, maxImages);
+              
+              if (msg.imageUrls.length > maxImages) {
+                console.warn(`⚠️ Too many images (${msg.imageUrls.length}), only processing first ${maxImages}`);
+              }
+              
+              for (const imageUrl of imagesToProcess) {
+                try {
+                  console.log('📷 Downloading image:', imageUrl.substring(0, 50) + '...');
+                  
+                  // Download ảnh từ Cloudinary với timeout
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                  
+                  const imageResponse = await fetch(imageUrl, { 
+                    signal: controller.signal,
+                    headers: {
+                      'User-Agent': 'L-Edu-Chatbot/1.0'
+                    }
+                  });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!imageResponse.ok) {
+                    throw new Error(`HTTP ${imageResponse.status}: ${imageResponse.statusText}`);
+                  }
+                  
+                  const arrayBuffer = await imageResponse.arrayBuffer();
+                  
+                  // Check file size (Gemini có giới hạn 20MB)
+                  if (arrayBuffer.byteLength > 20 * 1024 * 1024) {
+                    console.error('❌ Image too large:', `${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
+                    continue;
+                  }
+                  
+                  // Nếu ảnh quá lớn (>5MB), cảnh báo nhưng vẫn gửi
+                  if (arrayBuffer.byteLength > 5 * 1024 * 1024) {
+                    console.warn('⚠️ Large image detected:', `${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB - may cause slow response`);
+                  }
+                  
+                  const base64 = Buffer.from(arrayBuffer).toString('base64');
+                  
+                  // Detect mime type từ URL
+                  const mimeType = this.getMimeTypeFromUrl(imageUrl);
+                  
+                  parts.push({
+                    inlineData: {
+                      mimeType,
+                      data: base64
+                    }
+                  });
+                  console.log('✅ Added image to request:', imageUrl.substring(0, 50) + '...', `${(arrayBuffer.byteLength / 1024).toFixed(2)}KB`);
+                } catch (error) {
+                  console.error('❌ Failed to fetch image:', imageUrl, error.message);
+                  // Continue với các ảnh khác thay vì fail toàn bộ
+                }
+              }
+            }
+            
+            return {
+              role: msg.role === 'user' ? 'user' : 'model',
+              parts
+            };
+          })
+      );
 
       // Ghép system prompt + history
       const contents = [systemPrompt, modelResponse, ...userConversation];
 
       console.log('📖 Conversation history:', userConversation.length, 'messages (+ system prompt)');
+      
+      // Debug: Log request payload
+      const requestPayload = {
+        contents: contents,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        },
+      };
+      
+      console.log('📤 Request payload:', JSON.stringify(requestPayload, null, 2));
 
-      // Gọi Gemini 2.0 Flash API (không streaming)
+      // Gọi Gemini 2.5 Flash Lite API với STREAMING và timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.log('⏰ Gemini API timeout after 60 seconds');
+      }, 60000); // 60s timeout
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ contents }),
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -194,27 +310,81 @@ Bây giờ hãy bắt đầu trò chuyện:`
         throw new Error(`Gemini API error: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('✅ Received response from Gemini');
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
 
-      // Extract response text
-      const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
-      
-      console.log('📝 AI Response length:', aiResponse.length);
+      let fullResponse = '';
+      const decoder = new TextDecoder();
+
+      console.log('📡 Streaming response from Gemini...');
+
+      // Thêm timeout cho streaming
+      const streamTimeoutId = setTimeout(() => {
+        console.log('⏰ Streaming timeout after 120 seconds');
+        reader.cancel();
+      }, 120000); // 120s timeout cho streaming
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log('✅ Stream complete');
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === '[DONE]') continue;
+                
+                const data = JSON.parse(jsonStr);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                  fullResponse += text;
+                  
+                  // Emit streaming chunk đến client
+                  this.server.to(conversationId).emit('streaming_message', {
+                    id: messageId,
+                    content: fullResponse,
+                    role: 'assistant',
+                    isComplete: false,
+                  });
+                  
+                  console.log('📤 Streamed chunk, total length:', fullResponse.length);
+                }
+              } catch (e) {
+                // Ignore JSON parse errors
+                console.log('⚠️ Failed to parse chunk:', e.message);
+              }
+            }
+          }
+        }
+      } finally {
+        clearTimeout(streamTimeoutId);
+      }
+
+      console.log('📝 Full AI Response length:', fullResponse.length);
 
       // Lưu response vào DB
-      await this.chatService.updateAssistantMessage(messageId, aiResponse);
+      await this.chatService.updateAssistantMessage(messageId, fullResponse);
       console.log('✅ Assistant message saved to DB');
 
-      // Emit response đến client
+      // Emit final message
       this.server.to(conversationId).emit('streaming_message', {
         id: messageId,
-        content: aiResponse,
+        content: fullResponse,
         role: 'assistant',
         isComplete: true,
       });
 
-      console.log('✅ Response sent to client');
+      console.log('✅ Final response sent to client');
 
     } catch (error) {
       console.error('❌ Error calling Gemini:', error);

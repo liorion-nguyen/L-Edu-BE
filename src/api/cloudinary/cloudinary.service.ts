@@ -52,19 +52,49 @@ export class CloudinaryService {
             streamifier.createReadStream(file.buffer).pipe(uploadStream);
         });
     }
-    
-    
 
     async deleteFileByUrl(url: string): Promise<{ result: string }> {
+        console.log('🗑️ Deleting file from Cloudinary:', url);
+        
         const { publicId, resourceType } = this.extractPublicIdAndType(url);
+        console.log('🔍 Extracted info:', { publicId, resourceType });
+        
         if (!publicId) throw new Error('Invalid Cloudinary URL');
 
         return new Promise((resolve, reject) => {
             cloudinary.uploader.destroy(publicId, { resource_type: resourceType }, (error, result) => {
-                if (error) return reject(error);
+                if (error) {
+                    console.error('❌ Cloudinary delete error:', error);
+                    return reject(error);
+                }
+                console.log('✅ Cloudinary delete success:', result);
                 resolve(result);
             });
         });
+    }
+
+    async deleteFilesByUrls(urls: string[]): Promise<{ deleted: number; failed: number; errors: string[] }> {
+        const results = await Promise.allSettled(
+            urls.map(url => this.deleteFileByUrl(url))
+        );
+
+        let deleted = 0;
+        let failed = 0;
+        const errors: string[] = [];
+
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                deleted++;
+                console.log(`✅ Deleted file ${index + 1}: ${urls[index]}`);
+            } else {
+                failed++;
+                const error = result.reason?.message || 'Unknown error';
+                errors.push(`Failed to delete ${urls[index]}: ${error}`);
+                console.error(`❌ Failed to delete file ${index + 1}:`, error);
+            }
+        });
+
+        return { deleted, failed, errors };
     }
 
     private getResourceType(mimeType: string): 'image' | 'video' | 'raw' {
@@ -74,6 +104,8 @@ export class CloudinaryService {
     }
 
     private extractPublicIdAndType(url: string): { publicId: string | null; resourceType: 'image' | 'video' | 'raw' } {
+        console.log('🔍 Extracting from URL:', url);
+        
         let resourceType: 'image' | 'video' | 'raw' = 'image';
 
         if (url.includes('/video/upload/')) {
@@ -83,6 +115,10 @@ export class CloudinaryService {
         }
 
         const match = url.match(/\/v\d+\/(.+?)(\.\w+)?$/);
-        return { publicId: match ? match[1] : null, resourceType };
+        const publicId = match ? match[1] : null;
+        
+        console.log('🔍 Extracted result:', { publicId, resourceType, match: match ? match[0] : 'no match' });
+        
+        return { publicId, resourceType };
     }
 }

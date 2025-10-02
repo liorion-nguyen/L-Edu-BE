@@ -6,6 +6,7 @@ import { ChatService } from './chat.service';
 import { ChatGateway } from '../gateway/chat.gateway';
 import { Conversation, ConversationSchema } from 'src/scheme/conversation.schema';
 import { ChatMessage, ChatMessageSchema } from 'src/scheme/chat-message.schema';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ChatMessage, ChatMessageSchema } from 'src/scheme/chat-message.schema';
       secret: process.env.JWT_SECRET || 'JWT_SECRET',
       signOptions: { expiresIn: '7d' },
     }),
+    CloudinaryModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],

@@ -19,6 +19,9 @@ export class ChatMessage extends Document {
 
   @Prop({ default: false })
   isComplete: boolean;
+
+  @Prop({ type: [String] })
+  imageUrls?: string[]; // Lưu URLs của ảnh đã upload
 }
 
 export const ChatMessageSchema = SchemaFactory.createForClass(ChatMessage);

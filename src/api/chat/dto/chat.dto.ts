@@ -14,6 +14,9 @@ export class SendMessageDto {
   @IsString()
   @IsNotEmpty()
   content: string;
+
+  @IsOptional()
+  imageUrls?: string[]; // URLs của ảnh đã upload
 }
 
 export class GetMessagesDto {
