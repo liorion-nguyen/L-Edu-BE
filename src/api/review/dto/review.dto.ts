@@ -90,6 +90,8 @@ export class ReviewResponseDto {
   status: string;
   isAnonymous: boolean;
   isHidden: boolean;
+  editCount: number;
+  lastEditedAt: Date;
   createdAt: Date;
   updatedAt: Date;
   user?: {

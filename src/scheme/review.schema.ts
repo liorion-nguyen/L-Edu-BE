@@ -25,9 +25,32 @@ export class Review {
 
   @Prop({ default: false })
   isHidden: boolean;
+
+  @Prop({ default: 0 })
+  editCount: number;
+
+  @Prop({ default: null })
+  lastEditedAt: Date;
+
+  @Prop({ type: Date, default: Date.now })
+  createdAt: Date;
+
+  @Prop({ type: Date, default: Date.now })
+  updatedAt: Date;
 }
 
 export const ReviewSchema = SchemaFactory.createForClass(Review);
+
+// Auto-update updatedAt field
+ReviewSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+ReviewSchema.pre('findOneAndUpdate', function(next) {
+  this.set({ updatedAt: new Date() });
+  next();
+});
 
 // Index for efficient queries
 ReviewSchema.index({ courseId: 1, status: 1 });

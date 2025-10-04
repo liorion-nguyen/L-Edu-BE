@@ -30,6 +30,8 @@ export class ReviewService {
       status: review.status,
       isAnonymous: review.isAnonymous,
       isHidden: review.isHidden,
+      editCount: review.editCount || 0,
+      lastEditedAt: review.lastEditedAt,
       createdAt: (review as any).createdAt,
       updatedAt: (review as any).updatedAt,
       user: (review as any).user,
@@ -99,9 +101,15 @@ export class ReviewService {
     const { page = 1, limit = 10, userId, status, rating } = query;
     const skip = (page - 1) * limit;
 
-    const filter: any = { courseId, isHidden: false }; // Only show non-hidden reviews
+    const filter: any = { 
+      courseId, 
+      status: 'APPROVED',
+      $or: [
+        { isHidden: false },
+        { isHidden: { $exists: false } }
+      ]
+    }; // Only show non-hidden approved reviews
     if (userId) filter.userId = userId;
-    if (status) filter.status = status;
     if (rating) filter.rating = rating;
 
     const [reviews, total] = await Promise.all([
@@ -174,12 +182,32 @@ export class ReviewService {
     }
 
     // Only allow user to update their own review, or admin to update any review
-    if (review.userId !== userId && userRole !== 'ADMIN') {
+    if (review.userId.toString() !== userId.toString() && userRole !== 'ADMIN') {
       throw new ForbiddenException('You can only update your own reviews');
     }
 
+    // Check edit restrictions
+    if (userRole !== 'ADMIN') {
+      // Only allow 1 edit
+      if (review.editCount >= 1) {
+        throw new ForbiddenException('You can only edit your review once');
+      }
+
+      // Check if review was created more than 1 day ago
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      
+      if ((review as any).createdAt < oneDayAgo) {
+        throw new ForbiddenException('You cannot edit reviews older than 1 day');
+      }
+    }
+
     const updatedReview = await this.reviewModel
-      .findByIdAndUpdate(id, updateReviewDto, { new: true })
+      .findByIdAndUpdate(id, {
+        ...updateReviewDto,
+        editCount: review.editCount + 1,
+        lastEditedAt: new Date()
+      }, { new: true })
       .populate('userId', 'fullName avatar')
       .populate('courseId', 'name')
       .exec();
@@ -212,8 +240,19 @@ export class ReviewService {
     }
 
     // Only allow user to delete their own review, or admin to delete any review
-    if (review.userId !== userId && userRole !== 'ADMIN') {
+    if (review.userId.toString() !== userId.toString() && userRole !== 'ADMIN') {
       throw new ForbiddenException('You can only delete your own reviews');
+    }
+
+    // Check delete restrictions
+    if (userRole !== 'ADMIN') {
+      // Check if review was created more than 1 day ago
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      
+      if ((review as any).createdAt < oneDayAgo) {
+        throw new ForbiddenException('You cannot delete reviews older than 1 day. Please contact support if you need to delete this review.');
+      }
     }
 
     await this.reviewModel.findByIdAndDelete(id).exec();
@@ -221,7 +260,20 @@ export class ReviewService {
   }
 
   async getStats(courseId?: string): Promise<ReviewStatsDto> {
-    const filter = courseId ? { courseId, status: 'APPROVED' } : { status: 'APPROVED' };
+    const filter = courseId ? { 
+      courseId, 
+      status: 'APPROVED',
+      $or: [
+        { isHidden: false },
+        { isHidden: { $exists: false } }
+      ]
+    } : { 
+      status: 'APPROVED',
+      $or: [
+        { isHidden: false },
+        { isHidden: { $exists: false } }
+      ]
+    };
 
     const [totalReviews, approvedReviews, pendingReviews, rejectedReviews, ratingStats] = await Promise.all([
       this.reviewModel.countDocuments(filter).exec(),
@@ -284,4 +336,5 @@ export class ReviewService {
       },
     }).exec();
   }
+
 }

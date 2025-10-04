@@ -18,6 +18,9 @@ import { OtpModule } from './api/otp/otp.module';
 import { ChatModule } from './api/chat/chat.module';
 import { DashboardModule } from './api/dashboard/dashboard.module';
 import { ReviewModule } from './api/review/review.module';
+import { ContactModule } from './api/contact/contact.module';
+import { FooterModule } from './api/footer/footer.module';
+import { ContentModule } from './api/content/content.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -39,6 +42,9 @@ import { ReviewModule } from './api/review/review.module';
     ChatModule,
     DashboardModule,
     ReviewModule,
+    ContactModule,
+    FooterModule,
+    ContentModule,
   ],
   controllers: [AppController],
   providers: [

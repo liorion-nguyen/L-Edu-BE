@@ -2,12 +2,14 @@ import { Controller, Post, Delete, Body, UploadedFile, UseInterceptors } from '@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from './cloudinary.service';
 import { DeleteFileType } from 'src/payload/request/cloudinary.request';
+import { SkipAuth } from 'src/config/skip.auth';
 
 @Controller('upload')
 export class CloudinaryController {
     constructor(private readonly cloudinaryService: CloudinaryService) { }
 
     @Post()
+    @SkipAuth()
     @UseInterceptors(FileInterceptor('file'))
     async uploadImage(@UploadedFile() file: Express.Multer.File) {
         if (!file) {
