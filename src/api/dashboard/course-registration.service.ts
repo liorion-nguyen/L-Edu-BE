@@ -50,12 +50,22 @@ export class CourseRegistrationService {
   async getAllRegistrations(): Promise<CourseRegistrationResponseDto[]> {
     const registrations = await this.registrationModel
       .find()
-      .populate('userId', 'fullName email avatar')
-      .populate('courseId', 'title description thumbnail')
+      .populate({
+        path: 'userId',
+        select: 'fullName email avatar'
+      })
+      .populate({
+        path: 'courseId',
+        select: 'name description cover'
+      })
       .sort({ createdAt: -1 })
       .exec();
 
-    return registrations.map(reg => this.mapToResponseDto(reg));
+    console.log('getAllRegistrations - Raw registrations:', JSON.stringify(registrations, null, 2));
+    const mappedRegistrations = registrations.map(reg => this.mapToResponseDto(reg));
+    console.log('getAllRegistrations - Mapped registrations:', JSON.stringify(mappedRegistrations, null, 2));
+    
+    return mappedRegistrations;
   }
 
   async getRegistrationsByUser(userId: string): Promise<CourseRegistrationResponseDto[]> {
@@ -149,9 +159,9 @@ export class CourseRegistrationService {
       } : undefined,
       course: registration.courseId && typeof registration.courseId === 'object' ? {
         _id: (registration.courseId as any)._id,
-        title: (registration.courseId as any).title,
+        title: (registration.courseId as any).name,
         description: (registration.courseId as any).description,
-        thumbnail: (registration.courseId as any).thumbnail
+        thumbnail: (registration.courseId as any).cover
       } : undefined
     };
   }

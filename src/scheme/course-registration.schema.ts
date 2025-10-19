@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export type CourseRegistrationDocument = CourseRegistration & Document;
 
@@ -11,10 +11,10 @@ export enum RegistrationStatus {
 
 @Schema({ timestamps: true })
 export class CourseRegistration {
-  @Prop({ required: true })
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   userId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Course' })
   courseId: string;
 
   @Prop({ required: true })
