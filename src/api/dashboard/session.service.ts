@@ -78,7 +78,7 @@ export class DashboardSessionService {
       const savedSession = await session.save();
       return this.mapToResponseDto(savedSession);
     } catch (error) {
-      throw new BadRequestException('Failed to create session');
+      throw new BadRequestException(`Failed to create session: ${error.message}`);
     }
   }
 
@@ -172,7 +172,7 @@ export class DashboardSessionService {
       _id: session._id.toString(),
       title: session.title,
       courseId: session.courseId,
-      sessionNumber: session.sessionNumber.toString(),
+      sessionNumber: session.sessionNumber,
       views: session.views,
       description: session.description,
       mode: session.mode,

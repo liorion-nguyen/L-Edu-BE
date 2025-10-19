@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Conversation, ConversationDocument } from 'src/scheme/conversation.schema';
 import { ChatMessage, ChatMessageDocument } from 'src/scheme/chat-message.schema';
 import { SendMessageDto } from './dto/chat.dto';
@@ -59,15 +59,118 @@ export class ChatService {
       .exec();
   }
 
-  async getMessages(conversationId: string, lastMessageId?: string): Promise<ChatMessage[]> {
-    const query: any = { conversationId };
+  async getConversationsWithDetails(userId: string, isAdmin: boolean = false): Promise<any[]> {
+    // Admin có thể xem tất cả conversation, user thường chỉ xem của mình
+    const filter = isAdmin 
+      ? { isActive: true } 
+      : { userId, isActive: true };
+      
+    const conversations = await this.conversationModel
+      .find(filter)
+      .sort({ lastMessageAt: -1 })
+      .exec();
+    console.log(conversations);
+
+    const conversationsWithDetails = await Promise.all(
+      conversations.map(async (conversation) => {
+        // Lấy tin nhắn cuối cùng
+        const lastMessage = await this.messageModel
+          .findOne({ 
+            $or: [
+              { conversationId: conversation._id },
+              { conversationId: new Types.ObjectId(conversation._id.toString()) }
+            ]
+          })
+          .sort({ createdAt: -1 })
+          .exec();
+
+        // Đếm tổng số tin nhắn
+        const messageCount = await this.messageModel
+          .countDocuments({ 
+            $or: [
+              { conversationId: conversation._id },
+              { conversationId: new Types.ObjectId(conversation._id.toString()) }
+            ]
+          })
+          .exec();
+
+        return {
+          _id: conversation._id,
+          userId: conversation.userId,
+          title: conversation.title,
+          isActive: conversation.isActive,
+          lastMessageAt: conversation.lastMessageAt,
+          createdAt: (conversation as any).createdAt,
+          updatedAt: (conversation as any).updatedAt,
+          lastMessage: lastMessage ? {
+            content: lastMessage.content,
+            role: lastMessage.role,
+            createdAt: (lastMessage as any).createdAt,
+            imageUrls: lastMessage.imageUrls
+          } : null,
+          messageCount: messageCount,
+          status: conversation.isActive ? 'active' : 'inactive'
+        };
+      })
+    );
+
+    return conversationsWithDetails;
+  }
+
+  async getMessages(conversationId: string, lastMessageId?: string, userId?: string, isAdmin?: boolean): Promise<ChatMessage[]> {
+    console.log('🔍 Getting messages for conversation:', conversationId);
+    
+    // Kiểm tra quyền xem conversation (nếu có userId)
+    if (userId && !isAdmin) {
+      const conversation = await this.conversationModel.findById(conversationId).exec();
+      
+      if (!conversation || conversation.userId !== userId) {
+        console.log('❌ User not authorized to view this conversation');
+        return []; // User không có quyền xem conversation này
+      }
+    }
+    
+    // Debug: Kiểm tra conversation có tồn tại không
+    const conversation = await this.conversationModel.findById(conversationId).exec();
+    console.log('🏠 Conversation exists:', !!conversation, conversation ? {
+      id: conversation._id,
+      title: conversation.title,
+      userId: conversation.userId
+    } : 'Not found');
+    
+    // Debug: Kiểm tra tất cả messages trong database
+    const allMessages = await this.messageModel.find({}).limit(5).exec();
+    console.log('📋 Sample messages in DB:', allMessages.map(m => ({
+      id: m._id,
+      conversationId: m.conversationId,
+      conversationIdType: typeof m.conversationId,
+      role: m.role,
+      content: m.content?.substring(0, 50)
+    })));
+    
+    // Debug: Tìm messages với conversationId cụ thể
+    const directQuery = await this.messageModel.find({ conversationId }).exec();
+    console.log('🎯 Direct query result:', directQuery.length, 'messages');
+    
+    // Thử query với cả string và ObjectId
+    const query: any = { 
+      $or: [
+        { conversationId: conversationId },
+        { conversationId: new Types.ObjectId(conversationId) }
+      ]
+    };
+    
     if (lastMessageId) {
       query._id = { $gt: lastMessageId };
     }
-    return await this.messageModel
+    
+    const messages = await this.messageModel
       .find(query)
       .sort({ createdAt: 1 })
       .exec();
+      
+    console.log('📨 Found', messages.length, 'messages');
+    return messages;
   }
 
   async sendMessage(dto: SendMessageDto, userId: string): Promise<ChatMessage> {
@@ -241,6 +344,71 @@ export class ChatService {
         isStreaming: false,
         isComplete: true,
       });
+    }
+  }
+
+  // Admin methods for chat management
+  async deleteConversationById(conversationId: string): Promise<void> {
+    console.log('🗑️ Admin: Deleting conversation by ID:', conversationId);
+    
+    // Lấy tất cả messages để thu thập imageUrls
+    const messages = await this.messageModel.find({ conversationId }).exec();
+    console.log('📋 Found messages:', messages.length);
+    
+    const allImageUrls: string[] = [];
+    
+    messages.forEach((msg) => {
+      if (msg.imageUrls && msg.imageUrls.length > 0) {
+        allImageUrls.push(...msg.imageUrls);
+      }
+    });
+    
+    console.log('📷 Total images to delete:', allImageUrls.length);
+    
+    // Xóa tất cả messages trong conversation
+    await this.messageModel.deleteMany({ conversationId });
+    console.log('✅ Messages deleted');
+    
+    // Xóa conversation
+    await this.conversationModel.findByIdAndDelete(conversationId);
+    console.log('✅ Conversation deleted');
+    
+    // Xóa ảnh khỏi Cloudinary nếu có
+    if (allImageUrls.length > 0) {
+      try {
+        console.log('🗑️ Starting Cloudinary cleanup...');
+        const result = await this.cloudinaryService.deleteFilesByUrls(allImageUrls);
+        console.log('🗑️ Cloudinary cleanup result:', result);
+      } catch (error) {
+        console.error('❌ Failed to delete images from Cloudinary:', error);
+      }
+    }
+  }
+
+  async deleteMessageById(messageId: string): Promise<void> {
+    console.log('🗑️ Admin: Deleting message by ID:', messageId);
+    
+    // Lấy message để kiểm tra imageUrls
+    const message = await this.messageModel.findById(messageId);
+    
+    if (!message) {
+      console.log('⚠️ Message not found:', messageId);
+      return;
+    }
+    
+    // Xóa message
+    await this.messageModel.findByIdAndDelete(messageId);
+    console.log('✅ Message deleted');
+    
+    // Xóa ảnh khỏi Cloudinary nếu có
+    if (message.imageUrls && message.imageUrls.length > 0) {
+      try {
+        console.log('🗑️ Deleting images from Cloudinary:', message.imageUrls);
+        const result = await this.cloudinaryService.deleteFilesByUrls(message.imageUrls);
+        console.log('🗑️ Cloudinary cleanup result:', result);
+      } catch (error) {
+        console.error('❌ Failed to delete images from Cloudinary:', error);
+      }
     }
   }
 }

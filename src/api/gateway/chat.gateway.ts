@@ -2,6 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from '../chat/chat.service';
 import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
 
 @WebSocketGateway({
   cors: {
@@ -16,6 +17,7 @@ export class ChatGateway {
   constructor(
     private chatService: ChatService,
     private jwtService: JwtService,
+    private refreshTokenService: RefreshTokenService,
   ) {}
 
   private getMimeTypeFromUrl(url: string): string {
@@ -56,13 +58,68 @@ export class ChatGateway {
     } catch (error) {
       console.error('❌ Auth error:', error.message);
       console.error('   Error details:', error);
-      client.emit('error', { message: 'Invalid token' });
+      
+      // Handle different types of JWT errors
+      if (error.name === 'TokenExpiredError') {
+        console.log('🔄 Token expired, requesting refresh...');
+        client.emit('token_expired', { 
+          message: 'Token expired. Please refresh your token.',
+          expiredAt: error.expiredAt 
+        });
+      } else if (error.name === 'JsonWebTokenError') {
+        console.log('❌ Invalid token format');
+        client.emit('error', { message: 'Invalid token format' });
+      } else {
+        console.log('❌ Token verification failed');
+        client.emit('error', { message: 'Token verification failed' });
+      }
+      
       client.disconnect();
     }
   }
 
-    handleDisconnect(client: Socket) {
+  handleDisconnect(client: Socket) {
     console.log('👋 Client disconnected:', client.id);
+  }
+
+  @SubscribeMessage('refresh_token')
+  async handleRefreshToken(
+    @MessageBody() data: { refresh_token: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      console.log('🔄 Token refresh request from client:', client.id);
+      
+      if (!data.refresh_token) {
+        client.emit('refresh_error', { message: 'Refresh token required' });
+        return;
+      }
+
+      const refreshResult = await this.refreshTokenService.refreshToken({
+        refresh_token: data.refresh_token
+      });
+
+      console.log('✅ Token refreshed successfully for client:', client.id);
+      
+      // Verify the new token and update client data
+      const payload = this.jwtService.verify(refreshResult.access_token, {
+        secret: process.env.JWT_SECRET || 'JWT_SECRET',
+      });
+      
+      client.data.userId = payload.sub;
+      
+      client.emit('token_refreshed', {
+        access_token: refreshResult.access_token,
+        message: 'Token refreshed successfully'
+      });
+      
+    } catch (error) {
+      console.error('❌ Token refresh failed:', error.message);
+      client.emit('refresh_error', { 
+        message: 'Token refresh failed',
+        details: error.message 
+      });
+    }
   }
 
   @SubscribeMessage('join_conversation')
@@ -72,6 +129,8 @@ export class ChatGateway {
   ) {
     client.join(data.conversationId);
     console.log('🔗 Client joined conversation:', data.conversationId);
+    console.log('🔗 Client ID:', client.id);
+    console.log('🔗 Room members:', this.server.sockets.adapter.rooms.get(data.conversationId)?.size || 0);
   }
 
   @SubscribeMessage('send_message')
@@ -350,6 +409,7 @@ Bây giờ hãy bắt đầu trò chuyện:`
                   fullResponse += text;
                   
                   // Emit streaming chunk đến client
+                  console.log('📤 Emitting streaming chunk to conversationId:', conversationId);
                   this.server.to(conversationId).emit('streaming_message', {
                     id: messageId,
                     content: fullResponse,
@@ -377,6 +437,12 @@ Bây giờ hãy bắt đầu trò chuyện:`
       console.log('✅ Assistant message saved to DB');
 
       // Emit final message
+      console.log('📤 Emitting final message with isComplete: true');
+      console.log('📤 Emitting to conversationId:', conversationId);
+      console.log('📤 MessageId:', messageId);
+      console.log('📤 Available rooms:', Array.from(this.server.sockets.adapter.rooms.keys()));
+      console.log('📤 Room members for', conversationId, ':', this.server.sockets.adapter.rooms.get(conversationId)?.size || 0);
+      
       this.server.to(conversationId).emit('streaming_message', {
         id: messageId,
         content: fullResponse,
@@ -388,19 +454,10 @@ Bây giờ hãy bắt đầu trò chuyện:`
 
     } catch (error) {
       console.error('❌ Error calling Gemini:', error);
-      console.error('   Error details:', error.message);
-      
-      const errorMessage = 'Xin lỗi, tôi gặp sự cố kỹ thuật. Vui lòng thử lại sau.';
-      
-      // Lưu error message vào DB
-      await this.chatService.updateAssistantMessage(messageId, errorMessage);
-      
-      this.server.to(conversationId).emit('streaming_message', {
-        id: messageId,
-        content: errorMessage,
-        role: 'assistant',
-        isComplete: true,
+      this.server.to(conversationId).emit('error', {
+        message: 'Lỗi khi gọi AI',
+        details: error.message,
       });
     }
+    }
   }
-}

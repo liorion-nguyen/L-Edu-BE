@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsNumber, MinLength, MaxLength, IsArray, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, MinLength, MaxLength, IsArray, IsUrl, IsNumberString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SessionStatus, SessionType } from '../../../scheme/session.schema';
 
@@ -11,8 +11,9 @@ export class CreateSessionDto {
   @IsString()
   courseId: string;
 
-  @IsString()
-  sessionNumber: string;
+  @Transform(({ value }) => typeof value === 'string' ? parseInt(value) : value)
+  @IsNumber({}, { message: 'Session number must be a number' })
+  sessionNumber: number;
 
   @IsOptional()
   @IsString()
@@ -21,6 +22,10 @@ export class CreateSessionDto {
   @IsOptional()
   @IsString()
   mode?: string;
+
+  @IsOptional()
+  @IsString()
+  instructorId?: string; // Add instructorId field
 
   @IsOptional()
   videoUrl?: {
@@ -53,8 +58,9 @@ export class UpdateSessionDto {
   courseId?: string;
 
   @IsOptional()
-  @IsString()
-  sessionNumber?: string;
+  @Transform(({ value }) => typeof value === 'string' ? parseInt(value) : value)
+  @IsNumber({}, { message: 'Session number must be a number' })
+  sessionNumber?: number;
 
   @IsOptional()
   @IsString()
@@ -127,7 +133,7 @@ export class SessionResponseDto {
   _id: string;
   title: string;
   courseId: string;
-  sessionNumber: string;
+  sessionNumber: number; // Changed from string to number
   views: number;
   description?: string;
   mode?: string;

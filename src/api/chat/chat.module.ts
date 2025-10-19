@@ -7,6 +7,7 @@ import { ChatGateway } from '../gateway/chat.gateway';
 import { Conversation, ConversationSchema } from 'src/scheme/conversation.schema';
 import { ChatMessage, ChatMessageSchema } from 'src/scheme/chat-message.schema';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CloudinaryModule } from '../cloudinary/cloudinary.module';
       signOptions: { expiresIn: '7d' },
     }),
     CloudinaryModule,
+    RefreshTokenModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],

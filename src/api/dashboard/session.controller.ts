@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DashboardSessionService } from './session.service';
 import { CreateSessionDto, UpdateSessionDto, SessionQueryDto, SessionResponseDto, SessionStatsDto } from './dto/session.dto';
@@ -38,7 +38,9 @@ export class SessionController {
 
   @Post()
   @Roles(Role.ADMIN)
-  async create(@Body() createSessionDto: CreateSessionDto): Promise<SessionResponseDto> {
+  async create(@Body() createSessionDto: CreateSessionDto, @Req() req): Promise<SessionResponseDto> {
+    // Add instructorId from the authenticated user
+    createSessionDto.instructorId = req.user._id;
     return this.sessionService.create(createSessionDto);
   }
 

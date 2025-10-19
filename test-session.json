@@ -1,0 +1,11 @@
+{
+  "title": "ĐỘ PHỨC TẠP THUẬT TOÁN",
+  "sessionNumber": 19,
+  "description": "",
+  "courseId": "6881a73db4b3c4056d9f11f0",
+  "mode": "OPEN",
+  "notesMd": {
+    "notesMd": "# ĐỘ PHỨC TẠP THUẬT TOÁN\n\n## MỤC LỤC\n\n1. [Giới thiệu](#1-giới-thiệu)\n2. [Big-O là gì?](#2-big-o-là-gì)\n3. [Các độ phức tạp phổ biến](#3-các-độ-phức-tạp-phổ-biến)\n4. [Cách tính Big-O](#4-cách-tính-big-o)\n5. [So sánh 3 cách giải 1 bài toán](#5-so-sánh-3-cách-giải-1-bài-toán)\n6. [Thực hành phân tích](#6-thực-hành-phân-tích)\n7. [Tổng kết](#7-tổng-kết)\n8. [Bài tập về nhà](#8-bài-tập-về-nhà)\n\n---\n\n## 1. GIỚI THIỆU\n\n### Tại sao cần học độ phức tạp thuật toán?\n\nKhi giải quyết một bài toán, chúng ta có thể có nhiều cách tiếp cận khác nhau. Nhưng làm sao để biết cách nào **hiệu quả hơn**?\n\n**Ví dụ thực tế:**\n- Bạn cần tìm một cuốn sách trong thư viện có 10,000 cuốn\n- Cách 1: Tìm từng quyển từ đầu đến cuối → Mất nhiều thời gian\n- Cách 2: Sách đã sắp xếp theo thứ tự, bạn tìm theo khu vực → Nhanh hơn nhiều\n\n**Độ phức tạp thuật toán** giúp chúng ta:\n- Đánh giá hiệu suất của code\n- So sánh các thuật toán khác nhau\n- Dự đoán thời gian chạy khi dữ liệu lớn\n- Tối ưu hóa chương trình",
+    "mode": "OPEN"
+  }
+}

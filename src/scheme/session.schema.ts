@@ -21,7 +21,7 @@ export class Session {
   @Prop({ required: true, maxlength: 200 })
   title: string;
 
-  @Prop({ required: true, maxlength: 2000 })
+  @Prop({ required: false, maxlength: 2000 })
   description: string;
 
   @Prop({ required: true })
