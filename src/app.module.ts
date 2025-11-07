@@ -21,6 +21,7 @@ import { ReviewModule } from './api/review/review.module';
 import { ContactModule } from './api/contact/contact.module';
 import { FooterModule } from './api/footer/footer.module';
 import { ContentModule } from './api/content/content.module';
+import { ExamModule } from './api/exam/exam.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -45,6 +46,7 @@ import { ContentModule } from './api/content/content.module';
     ContactModule,
     FooterModule,
     ContentModule,
+    ExamModule,
   ],
   controllers: [AppController],
   providers: [
