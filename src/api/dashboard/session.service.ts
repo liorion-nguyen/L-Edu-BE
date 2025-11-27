@@ -76,6 +76,16 @@ export class DashboardSessionService {
     try {
       const session = new this.sessionModel(createSessionDto);
       const savedSession = await session.save();
+      
+      // Add session ID to course's sessions array
+      if (createSessionDto.courseId) {
+        await this.courseModel.findByIdAndUpdate(
+          createSessionDto.courseId,
+          { $push: { sessions: savedSession._id.toString() } },
+          { new: true }
+        );
+      }
+      
       return this.mapToResponseDto(savedSession);
     } catch (error) {
       throw new BadRequestException(`Failed to create session: ${error.message}`);
@@ -83,6 +93,12 @@ export class DashboardSessionService {
   }
 
   async update(id: string, updateSessionDto: UpdateSessionDto): Promise<SessionResponseDto> {
+    // Get the existing session to check if courseId is changing
+    const existingSession = await this.sessionModel.findById(id).exec();
+    if (!existingSession) {
+      throw new NotFoundException('Session not found');
+    }
+
     const session = await this.sessionModel.findByIdAndUpdate(
       id,
       updateSessionDto,
@@ -93,6 +109,25 @@ export class DashboardSessionService {
       throw new NotFoundException('Session not found');
     }
 
+    // Handle courseId change: remove from old course, add to new course
+    if (updateSessionDto.courseId && updateSessionDto.courseId !== existingSession.courseId) {
+      // Remove from old course if it exists
+      if (existingSession.courseId) {
+        await this.courseModel.findByIdAndUpdate(
+          existingSession.courseId,
+          { $pull: { sessions: id } },
+          { new: true }
+        );
+      }
+      
+      // Add to new course
+      await this.courseModel.findByIdAndUpdate(
+        updateSessionDto.courseId,
+        { $addToSet: { sessions: id } }, // Use $addToSet to avoid duplicates
+        { new: true }
+      );
+    }
+
     return this.mapToResponseDto(session);
   }
 
@@ -100,6 +135,15 @@ export class DashboardSessionService {
     const session = await this.sessionModel.findById(id).exec();
     if (!session) {
       throw new NotFoundException('Session not found');
+    }
+
+    // Remove session ID from course's sessions array
+    if (session.courseId) {
+      await this.courseModel.findByIdAndUpdate(
+        session.courseId,
+        { $pull: { sessions: id } },
+        { new: true }
+      );
     }
 
     // Delete thumbnail from Cloudinary if exists
