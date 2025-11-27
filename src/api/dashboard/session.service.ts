@@ -185,12 +185,9 @@ export class DashboardSessionService {
   }
 
   async getCourses(): Promise<{courses: Array<{_id: string, title: string}>}> {
-    // Get distinct courseIds from sessions
-    const sessionCourseIds = await this.sessionModel.distinct('courseId');
-    
-    // Get course details for those courseIds
+    // Get all courses from the database
     const courses = await this.courseModel.find(
-      { _id: { $in: sessionCourseIds } }, 
+      {}, 
       '_id name'
     ).exec();
     

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { ExamService } from "./exam.service";
 import { CreateExamDto, UpdateExamDto } from "./dto/exam-config.dto";
 import { CreateAttemptDto, SaveAttemptProgressDto, SubmitAttemptDto } from "./dto/attempt.dto";
+import { Request } from "express";
 
 @Controller("exam")
 export class ExamController {
@@ -56,6 +57,20 @@ export class ExamController {
         @Param("attemptId") attemptId: string,
     ) {
         return this.examService.getAttempt(examId, attemptId);
+    }
+
+    @Get(":examId/attempts")
+    listAttempts(
+        @Param("examId") examId: string,
+        @Query() query: { studentId?: string; from?: string; to?: string },
+        @Req() req: Request,
+    ) {
+        return this.examService.listAttempts(examId, {
+            requester: (req as any)?.user,
+            studentId: query?.studentId,
+            from: query?.from,
+            to: query?.to,
+        });
     }
 
     @Patch(":examId/attempt/:attemptId")

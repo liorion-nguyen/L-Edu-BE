@@ -32,6 +32,10 @@ export class ExamOptionDto {
 }
 
 export class ExamQuestionDto {
+    @IsOptional()
+    @IsString()
+    id?: string;
+
     @IsEnum(ExamQuestionType)
     type: ExamQuestionType;
 

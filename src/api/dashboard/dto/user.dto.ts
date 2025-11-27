@@ -27,8 +27,10 @@ export class CreateUserDto {
   birthday?: string;
 
   @IsOptional()
-  @IsString()
-  phone?: string;
+  phone?: {
+    country: string;
+    number: string;
+  };
 
   @IsOptional()
   @IsEnum(Role, { message: 'Invalid role' })
@@ -67,8 +69,10 @@ export class UpdateUserDto {
   birthday?: string;
 
   @IsOptional()
-  @IsString()
-  phone?: string;
+  phone?: {
+    country: string;
+    number: string;
+  };
 
   @IsOptional()
   @IsEnum(Role, { message: 'Invalid role' })
@@ -118,7 +122,10 @@ export class UserResponseDto {
   avatar?: string;
   gender?: string;
   birthday?: Date;
-  phone?: string;
+  phone?: {
+    country: string;
+    number: string;
+  };
   role: Role;
   status: Status;
   bio: string;

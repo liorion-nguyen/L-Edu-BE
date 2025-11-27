@@ -12,6 +12,17 @@ import {
     ExamVisibility,
 } from "src/scheme/exam.schema";
 import { CreateAttemptDto, SaveAttemptProgressDto, SubmitAttemptDto } from "./dto/attempt.dto";
+import { Role } from "src/enums/user.enum";
+
+interface ListAttemptsOptions {
+    requester?: {
+        _id?: string;
+        role?: Role | string;
+    };
+    studentId?: string;
+    from?: string;
+    to?: string;
+}
 
 @Injectable()
 export class ExamService {
@@ -58,10 +69,43 @@ export class ExamService {
             }
         }
 
-        const questions = payload.questions.map((question, index) => ({
-            ...question,
-            order: typeof question.order === "number" ? question.order : index,
-        }));
+        const questions = payload.questions.map((question, index) => {
+            const questionId =
+                question.id && Types.ObjectId.isValid(question.id)
+                    ? question.id
+                    : new Types.ObjectId().toHexString();
+
+            const optionIdMap = new Map<string, string>();
+            const options = (question.options ?? []).map((option, optionIndex) => {
+                const originalOptionId = option.id;
+                const optionId =
+                    originalOptionId && Types.ObjectId.isValid(originalOptionId)
+                        ? originalOptionId
+                        : new Types.ObjectId().toHexString();
+                if (originalOptionId && originalOptionId !== optionId) {
+                    optionIdMap.set(originalOptionId, optionId);
+                }
+                return {
+                    ...option,
+                    id: optionId,
+                };
+            });
+
+            const correctAnswers = question.correctAnswers?.map((answer) => {
+                if (!answer) return answer;
+                if (Types.ObjectId.isValid(answer)) return answer;
+                const mapped = optionIdMap.get(answer);
+                return mapped ?? answer;
+            });
+
+            return {
+                ...question,
+                id: questionId,
+                options,
+                correctAnswers,
+                order: typeof question.order === "number" ? question.order : index,
+            };
+        });
         const totalPoints = questions.reduce((acc, question) => acc + question.points, 0);
         const config = {
             ...payload.config,
@@ -109,10 +153,43 @@ export class ExamService {
         }
 
         if (payload.questions) {
-            exam.questions = payload.questions.map((question, index) => ({
-                ...question,
-                order: typeof question.order === "number" ? question.order : index,
-            })) as unknown as ExamQuestion[];
+            exam.questions = payload.questions.map((question, index) => {
+                const questionId =
+                    question.id && Types.ObjectId.isValid(question.id)
+                        ? question.id
+                        : new Types.ObjectId().toHexString();
+
+                const optionIdMap = new Map<string, string>();
+                const options = (question.options ?? []).map((option) => {
+                    const originalOptionId = option.id;
+                    const optionId =
+                        originalOptionId && Types.ObjectId.isValid(originalOptionId)
+                            ? originalOptionId
+                            : new Types.ObjectId().toHexString();
+                    if (originalOptionId && originalOptionId !== optionId) {
+                        optionIdMap.set(originalOptionId, optionId);
+                    }
+                    return {
+                        ...option,
+                        id: optionId,
+                    };
+                });
+
+                const correctAnswers = question.correctAnswers?.map((answer) => {
+                    if (!answer) return answer;
+                    if (Types.ObjectId.isValid(answer)) return answer;
+                    const mapped = optionIdMap.get(answer);
+                    return mapped ?? answer;
+                });
+
+                return {
+                    ...question,
+                    id: questionId,
+                    options,
+                    correctAnswers,
+                    order: typeof question.order === "number" ? question.order : index,
+                };
+            }) as unknown as ExamQuestion[];
             exam.totalPoints = exam.questions.reduce((acc, question) => acc + question.points, 0);
         }
 
@@ -143,11 +220,13 @@ export class ExamService {
     }
 
     async getExamDetail(examId: string) {
-        const exam = await this.examModel.findById(examId).lean();
+        const exam = await this.examModel.findById(examId);
         if (!exam) {
             throw new NotFoundException("Exam not found");
         }
-        return exam;
+
+        await this.normalizeExamQuestionData(exam);
+        return exam.toObject();
     }
 
     async getExamOverview(examId: string) {
@@ -193,6 +272,7 @@ export class ExamService {
             throw new NotFoundException("Exam not found");
         }
 
+        await this.normalizeExamQuestionData(exam);
         this.ensureExamAccessible(exam, payload.studentId);
 
         const existingAttempt = await this.attemptModel.findOne({
@@ -225,6 +305,97 @@ export class ExamService {
             throw new NotFoundException("Attempt not found");
         }
         return attempt;
+    }
+
+    async listAttempts(examId: string, options: ListAttemptsOptions = {}) {
+        const { requester, studentId, from, to } = options;
+        if (!requester?._id || !requester?.role) {
+            throw new ForbiddenException("Unauthorized");
+        }
+
+        const exam = await this.examModel.findById(examId);
+        if (!exam) {
+            throw new NotFoundException("Exam not found");
+        }
+
+        await this.normalizeExamQuestionData(exam);
+
+        const requesterRole = requester.role as Role;
+        const requesterId = requester._id?.toString?.() ?? requester._id;
+
+        if (requesterRole === Role.TEACHER) {
+            if (exam.instructorId && exam.instructorId.toString() !== requesterId) {
+                throw new ForbiddenException("Bạn không có quyền xem lịch sử bài làm của bài kiểm tra này");
+            }
+        }
+
+        let effectiveStudentId: string | undefined;
+        if (requesterRole === Role.STUDENT) {
+            effectiveStudentId = requesterId;
+        } else if (studentId) {
+            effectiveStudentId = studentId;
+        }
+
+        const filter: FilterQuery<ExamAttempt> = { examId };
+        if (effectiveStudentId) {
+            filter.studentId = effectiveStudentId;
+        }
+
+        if (from || to) {
+            const startedAtFilter: Record<string, Date> = {};
+            if (from && !Number.isNaN(Date.parse(from))) {
+                startedAtFilter.$gte = new Date(from);
+            }
+            if (to && !Number.isNaN(Date.parse(to))) {
+                startedAtFilter.$lte = new Date(to);
+            }
+            if (Object.keys(startedAtFilter).length > 0) {
+                filter.startedAt = startedAtFilter as any;
+            }
+        }
+
+        const attempts = await this.attemptModel
+            .find(filter, {
+                examId: 1,
+                studentId: 1,
+                startedAt: 1,
+                submittedAt: 1,
+                status: 1,
+                totalScore: 1,
+                maxScore: 1,
+                answers: 1,
+                createdAt: 1,
+                updatedAt: 1,
+            })
+            .sort({ startedAt: -1 })
+            .populate("studentId", "fullName email avatar")
+            .lean();
+
+        return attempts.map((attempt) => {
+            const populatedStudent = attempt.studentId as any;
+            const normalizedStudent =
+                populatedStudent &&
+                typeof populatedStudent === "object" &&
+                "fullName" in populatedStudent
+                    ? {
+                          _id: populatedStudent?._id?.toString?.() ?? populatedStudent?._id,
+                          fullName: populatedStudent?.fullName,
+                          email: populatedStudent?.email,
+                          avatar: populatedStudent?.avatar,
+                      }
+                    : undefined;
+
+            return {
+                ...attempt,
+                _id: attempt._id?.toString?.() ?? attempt._id,
+                examId: (attempt.examId as any)?.toString?.() ?? attempt.examId,
+                studentId:
+                    typeof attempt.studentId === "string"
+                        ? attempt.studentId
+                        : populatedStudent?._id?.toString?.() ?? populatedStudent,
+                student: normalizedStudent,
+            };
+        });
     }
 
     async saveAttemptProgress(examId: string, attemptId: string, payload: SaveAttemptProgressDto) {
@@ -282,6 +453,8 @@ export class ExamService {
             return attempt.toObject();
         }
 
+        await this.normalizeExamQuestionData(exam);
+
         const graded = this.gradeAttempt(exam, attempt);
         attempt.answers = graded.answers;
         attempt.totalScore = graded.totalScore;
@@ -296,7 +469,14 @@ export class ExamService {
     private gradeAttempt(exam: Exam, attempt: ExamAttempt) {
         const questionsById = new Map<string, ExamQuestion>();
         exam.questions.forEach((question) => {
-            const id = (question as any)._id ? (question as any)._id.toString() : undefined;
+            const candidateId = (question as any).id;
+            const fallbackId = (question as any)._id;
+            const id =
+                candidateId && Types.ObjectId.isValid(candidateId)
+                    ? candidateId.toString()
+                    : fallbackId
+                    ? fallbackId.toString()
+                    : undefined;
             if (id) {
                 questionsById.set(id, question);
             }
@@ -333,6 +513,49 @@ export class ExamService {
             totalScore,
             maxScore: exam.totalPoints,
         };
+    }
+
+    private async normalizeExamQuestionData(exam: Exam) {
+        let updated = false;
+
+        (exam.questions ?? []).forEach((question: any) => {
+            if (!question.id || !Types.ObjectId.isValid(question.id)) {
+                question.id = new Types.ObjectId().toHexString();
+                updated = true;
+            }
+
+            const optionIdMap = new Map<string, string>();
+            if (Array.isArray(question.options)) {
+                question.options.forEach((option: any) => {
+                    const originalId = option.id;
+                    if (!originalId || !Types.ObjectId.isValid(originalId)) {
+                        const newId = new Types.ObjectId().toHexString();
+                        if (originalId) {
+                            optionIdMap.set(originalId, newId);
+                        }
+                        option.id = newId;
+                        updated = true;
+                    }
+                });
+            }
+
+            if (Array.isArray(question.correctAnswers) && question.correctAnswers.length > 0) {
+                const nextAnswers = question.correctAnswers.map((answer: string) => {
+                    if (!answer) return answer;
+                    if (Types.ObjectId.isValid(answer)) return answer;
+                    return optionIdMap.get(answer) ?? answer;
+                });
+                if (JSON.stringify(nextAnswers) !== JSON.stringify(question.correctAnswers)) {
+                    question.correctAnswers = nextAnswers;
+                    updated = true;
+                }
+            }
+        });
+
+        if (updated) {
+            exam.markModified("questions");
+            await exam.save();
+        }
     }
 
     private evaluateAnswer(question: ExamQuestion, answer: AttemptAnswer) {

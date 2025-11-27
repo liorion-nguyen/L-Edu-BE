@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Schema as MongooseSchema } from "mongoose";
+import { Document, Schema as MongooseSchema, Types } from "mongoose";
 
 export enum ExamVisibility {
     DRAFT = "DRAFT",
@@ -61,6 +61,9 @@ export class ExamOption {
 
 @Schema({ _id: false })
 export class ExamQuestion {
+    @Prop({ type: String, default: () => new Types.ObjectId().toHexString() })
+    id: string;
+
     @Prop({ type: String, enum: ExamQuestionType, required: true })
     type: ExamQuestionType;
 

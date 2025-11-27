@@ -14,6 +14,15 @@ class Address {
     ward: string;
 }
 
+@Schema({ _id: false })
+class Phone {
+    @Prop({ required: true })
+    country: string;
+
+    @Prop({ required: true })
+    number: string;
+}
+
 @Schema({ timestamps: true })
 export class User extends Document {
     @Prop({ required: false })
@@ -28,8 +37,8 @@ export class User extends Document {
     @Prop({ type: Address, required: false, default: null })
     address?: Address;
 
-    @Prop({ required: false, default: null })
-    phone?: string;
+    @Prop({ type: Phone, required: false, default: null })
+    phone?: Phone;
 
     @Prop({ required: true })
     fullName: string;
