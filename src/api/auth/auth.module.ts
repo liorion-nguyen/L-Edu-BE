@@ -9,13 +9,14 @@ import { GoogleStrategy } from 'src/common/strategies/google.strategy';
 import { UserService } from '../users/users.service';
 import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
 import { EmailVerificationModule } from '../email-verification/email-verification.module';
+import { JWT_CONFIG } from 'src/config/jwt.config';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '7d' },
+      secret: JWT_CONFIG.SECRET,
+      signOptions: { expiresIn: JWT_CONFIG.EXPIRES_IN },
     }),
     forwardRef(() => UserModule),
     forwardRef(() => RefreshTokenModule),

@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenRequest } from 'src/payload/request/refresh-token.request';
 import { EmailVerificationService } from '../email-verification/email-verification.service';
 import { RefreshTokenResponse } from 'src/payload/response/refresh-token.response';
+import { JWT_CONFIG } from 'src/config/jwt.config';
 
 @Injectable()
 export class AuthService {
@@ -50,8 +51,8 @@ export class AuthService {
             }
             const payload = { email: user.email, sub: user._id, role: user.role };
             const access_token = this.jwtService.sign(payload, {
-                secret: process.env.JWT_SECRET || "JWT_SECRET",
-                expiresIn: "7d",
+                secret: JWT_CONFIG.SECRET,
+                expiresIn: JWT_CONFIG.EXPIRES_IN,
             });
             const refresh_token = crypto.randomBytes(16).toString("hex");
             await this.refreshTokenService.storeToken(user._id, refresh_token);
@@ -127,8 +128,8 @@ export class AuthService {
         try {
             const payload = { email: user.email, sub: user._id, role: user.role };
             const access_token = this.jwtService.sign(payload, {
-                secret: process.env.JWT_SECRET || "JWT_SECRET",
-                expiresIn: "7d",
+                secret: JWT_CONFIG.SECRET,
+                expiresIn: JWT_CONFIG.EXPIRES_IN,
             });
             const refresh_token = crypto.randomBytes(16).toString("hex");
             await this.refreshTokenService.storeToken(user._id, refresh_token);

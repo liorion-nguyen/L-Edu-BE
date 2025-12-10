@@ -8,6 +8,7 @@ import { Conversation, ConversationSchema } from 'src/scheme/conversation.schema
 import { ChatMessage, ChatMessageSchema } from 'src/scheme/chat-message.schema';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
+import { JWT_CONFIG } from 'src/config/jwt.config';
 
 @Module({
   imports: [
@@ -16,8 +17,8 @@ import { RefreshTokenModule } from '../refresh-token/refrehser-token.module';
       { name: ChatMessage.name, schema: ChatMessageSchema },
     ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'JWT_SECRET',
-      signOptions: { expiresIn: '7d' },
+      secret: JWT_CONFIG.SECRET,
+      signOptions: { expiresIn: JWT_CONFIG.EXPIRES_IN },
     }),
     CloudinaryModule,
     RefreshTokenModule,

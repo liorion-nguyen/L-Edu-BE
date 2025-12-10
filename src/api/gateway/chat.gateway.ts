@@ -3,6 +3,7 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from '../chat/chat.service';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
+import { JWT_CONFIG } from 'src/config/jwt.config';
 
 @WebSocketGateway({
   cors: {
@@ -50,7 +51,7 @@ export class ChatGateway {
       console.log('🔑 Token received, verifying...');
       
       const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET || 'JWT_SECRET',
+        secret: JWT_CONFIG.SECRET,
       });
       
       client.data.userId = payload.sub;
@@ -103,7 +104,7 @@ export class ChatGateway {
       
       // Verify the new token and update client data
       const payload = this.jwtService.verify(refreshResult.access_token, {
-        secret: process.env.JWT_SECRET || 'JWT_SECRET',
+        secret: JWT_CONFIG.SECRET,
       });
       
       client.data.userId = payload.sub;

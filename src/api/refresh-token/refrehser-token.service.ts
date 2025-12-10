@@ -7,6 +7,7 @@ import { RefreshToken } from "src/scheme/refresh-token.scheme";
 import { RefreshTokenRequest } from "src/payload/request/refresh-token.request";
 import { RefreshTokenResponse } from "src/payload/response/refresh-token.response";
 import { LogoutRequest } from "src/payload/request/users.request";
+import { JWT_CONFIG } from "src/config/jwt.config";
 
 @Injectable()
 export class RefreshTokenService {
@@ -19,7 +20,7 @@ export class RefreshTokenService {
 
   async storeToken(userId: string, token: string): Promise<void> {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + JWT_CONFIG.REFRESH_TOKEN_EXPIRES_DAYS);
 
     await this.refreshTokenModel.updateOne(
       { userId },
@@ -45,8 +46,8 @@ export class RefreshTokenService {
 
     const payload = { email: user.email, sub: user._id };
     const access_token = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET || "JWT_SECRET",
-      expiresIn: "7d",
+      secret: JWT_CONFIG.SECRET,
+      expiresIn: JWT_CONFIG.EXPIRES_IN,
     });
 
     return { access_token };
