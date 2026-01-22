@@ -156,10 +156,26 @@ export class CourseController {
   @Roles(Role.ADMIN)
   async updateCourseInstructor(@Param('id') courseId: string, @Body() updateInstructorDto: UpdateCourseInstructorDto) {
     try {
-      const course = await this.courseService.updateCourseInstructor(courseId, updateInstructorDto.instructorId);
+      const course = await this.courseService.updateCourseInstructor(courseId, updateInstructorDto.instructorId || null);
       return {
         success: true,
-        message: 'Course instructor updated successfully',
+        message: updateInstructorDto.instructorId ? 'Course instructor updated successfully' : 'Course instructor removed successfully',
+        data: course
+      };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Delete(':id/instructor')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async removeCourseInstructor(@Param('id') courseId: string) {
+    try {
+      const course = await this.courseService.updateCourseInstructor(courseId, null);
+      return {
+        success: true,
+        message: 'Course instructor removed successfully',
         data: course
       };
     } catch (error) {

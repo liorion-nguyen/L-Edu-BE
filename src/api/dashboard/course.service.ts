@@ -151,7 +151,22 @@ export class CourseService {
     return this.findOne(courseId);
   }
 
-  async updateCourseInstructor(courseId: string, instructorId: string): Promise<CourseResponseDto> {
+  async updateCourseInstructor(courseId: string, instructorId: string | null): Promise<CourseResponseDto> {
+    // If instructorId is null or empty, remove instructor
+    if (!instructorId || instructorId.trim() === '') {
+      const course = await this.courseModel.findByIdAndUpdate(
+        courseId, 
+        { $unset: { instructorId: '' } }, 
+        { new: true }
+      ).exec();
+      
+      if (!course) {
+        throw new NotFoundException('Course not found');
+      }
+
+      return this.findOne(courseId);
+    }
+
     // Check if instructor exists
     const instructor = await this.userModel.findById(instructorId).exec();
     if (!instructor) {
@@ -173,7 +188,7 @@ export class CourseService {
   }
 
   async getAvailableInstructors(): Promise<any[]> {
-    return this.userModel.find({ role: 'INSTRUCTOR' }).select('_id fullName email avatar').exec();
+    return this.userModel.find({ role: { $in: ['TEACHER', 'ADMIN'] } }).select('_id fullName email avatar').exec();
   }
 
   async getAvailableStudents(): Promise<any[]> {

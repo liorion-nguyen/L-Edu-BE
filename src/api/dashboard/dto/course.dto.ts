@@ -186,5 +186,6 @@ export class RemoveStudentFromCourseDto {
 
 export class UpdateCourseInstructorDto {
   @IsString()
-  instructorId: string;
+  @IsOptional()
+  instructorId?: string | null;
 }
