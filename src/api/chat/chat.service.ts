@@ -60,61 +60,82 @@ export class ChatService {
   }
 
   async getConversationsWithDetails(userId: string, isAdmin: boolean = false): Promise<any[]> {
-    // Admin có thể xem tất cả conversation, user thường chỉ xem của mình
-    const filter = isAdmin 
-      ? { isActive: true } 
-      : { userId, isActive: true };
-      
-    const conversations = await this.conversationModel
-      .find(filter)
-      .sort({ lastMessageAt: -1 })
-      .exec();
-    console.log(conversations);
+    const matchStage = isAdmin ? { isActive: true } : { userId, isActive: true };
 
-    const conversationsWithDetails = await Promise.all(
-      conversations.map(async (conversation) => {
-        // Lấy tin nhắn cuối cùng
-        const lastMessage = await this.messageModel
-          .findOne({ 
-            $or: [
-              { conversationId: conversation._id },
-              { conversationId: new Types.ObjectId(conversation._id.toString()) }
-            ]
-          })
-          .sort({ createdAt: -1 })
-          .exec();
+    const results = await this.conversationModel.aggregate([
+      { $match: matchStage },
+      { $sort: { lastMessageAt: -1 } },
+      {
+        $lookup: {
+          from: 'chatmessages',
+          let: { convId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$conversationId', { $toString: '$$convId' }] },
+                    { $eq: ['$conversationId', '$$convId'] }
+                  ]
+                }
+              }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+              $group: {
+                _id: null,
+                lastMessage: { $first: '$$ROOT' },
+                messageCount: { $sum: 1 }
+              }
+            },
+            { $project: { lastMessage: 1, messageCount: 1, _id: 0 } }
+          ],
+          as: 'msgData'
+        }
+      },
+      {
+        $addFields: {
+          msgData0: { $arrayElemAt: ['$msgData', 0] }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          title: 1,
+          isActive: 1,
+          lastMessageAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          lastMessage: {
+            $cond: {
+              if: { $and: [{ $gt: [{ $size: '$msgData' }, 0] }, '$msgData0.lastMessage'] },
+              then: {
+                content: '$msgData0.lastMessage.content',
+                role: '$msgData0.lastMessage.role',
+                createdAt: '$msgData0.lastMessage.createdAt',
+                imageUrls: '$msgData0.lastMessage.imageUrls'
+              },
+              else: null
+            }
+          },
+          messageCount: { $ifNull: ['$msgData0.messageCount', 0] }
+        }
+      }
+    ]);
 
-        // Đếm tổng số tin nhắn
-        const messageCount = await this.messageModel
-          .countDocuments({ 
-            $or: [
-              { conversationId: conversation._id },
-              { conversationId: new Types.ObjectId(conversation._id.toString()) }
-            ]
-          })
-          .exec();
-
-        return {
-          _id: conversation._id,
-          userId: conversation.userId,
-          title: conversation.title,
-          isActive: conversation.isActive,
-          lastMessageAt: conversation.lastMessageAt,
-          createdAt: (conversation as any).createdAt,
-          updatedAt: (conversation as any).updatedAt,
-          lastMessage: lastMessage ? {
-            content: lastMessage.content,
-            role: lastMessage.role,
-            createdAt: (lastMessage as any).createdAt,
-            imageUrls: lastMessage.imageUrls
-          } : null,
-          messageCount: messageCount,
-          status: conversation.isActive ? 'active' : 'inactive'
-        };
-      })
-    );
-
-    return conversationsWithDetails;
+    return results.map((r) => ({
+      _id: r._id,
+      userId: r.userId,
+      title: r.title,
+      isActive: r.isActive,
+      lastMessageAt: r.lastMessageAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      lastMessage: r.lastMessage && r.lastMessage.content !== undefined ? r.lastMessage : null,
+      messageCount: r.messageCount ?? 0,
+      status: r.isActive ? 'active' : 'inactive'
+    }));
   }
 
   async getMessages(conversationId: string, lastMessageId?: string, userId?: string, isAdmin?: boolean): Promise<ChatMessage[]> {

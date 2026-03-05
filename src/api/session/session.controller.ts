@@ -4,6 +4,7 @@ import { CommonException } from "src/common/exception/exception";
 import { CreateSessionRequest, SearchSessionRequest, UpdateSessionRequest } from "src/payload/request/session.request";
 import { successResponse } from "src/common/dto/response.dto";
 import { AnyFilesInterceptor } from "@nestjs/platform-express";
+import { SkipAuth } from "src/config/skip.auth";
 
 @Controller("session")
 export class SessionController {
@@ -12,6 +13,7 @@ export class SessionController {
     ) { }
 
     @Get("search")
+    @SkipAuth()
     async Search(@Query() query: SearchSessionRequest) {
         try {
             return successResponse(await this.sessionService.Search(query));
@@ -24,9 +26,10 @@ export class SessionController {
     }
 
     @Get(":id")
+    @SkipAuth()
     async GetSession(@Param('id') id: string, @Req() req) {
         try {
-            return successResponse(await this.sessionService.getSessionById(id, req.user.role));
+            return successResponse(await this.sessionService.getSessionById(id, req.user?.role));
         } catch (error) {
             throw new CommonException(
                 error.message,

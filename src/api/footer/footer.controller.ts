@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../../enums/user.enum';
+import { SkipAuth } from '../../config/skip.auth';
 
 @Controller('footer')
 export class FooterController {
@@ -23,6 +24,7 @@ export class FooterController {
   }
 
   @Get()
+  @SkipAuth()
   async findAll() {
     const footers = await this.footerService.findAll();
     return {
@@ -45,6 +47,7 @@ export class FooterController {
   }
 
   @Get('section/:section')
+  @SkipAuth()
   async getBySection(@Param('section') section: string) {
     const footers = await this.footerService.getBySection(section);
     return {
@@ -55,6 +58,7 @@ export class FooterController {
   }
 
   @Get(':id')
+  @SkipAuth()
   async findOne(@Param('id') id: string) {
     const footer = await this.footerService.findOne(id);
     return {

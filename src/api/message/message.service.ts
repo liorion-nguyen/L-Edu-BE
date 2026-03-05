@@ -38,7 +38,6 @@ export class MessageService {
                 .select("_id message senderId file createdAt")
                 .populate("senderId", "_id fullName avatar")
                 .lean<MessageResponse[]>()
-                .sort({ createdAt: 1 })
                 .exec(),
             this.MessageModel.countDocuments(filter).exec(),
         ]);

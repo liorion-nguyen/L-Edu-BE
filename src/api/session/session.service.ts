@@ -32,11 +32,14 @@ export class SessionService {
         const filter: any = {};
 
         if (query.title) {
-            filter.name = { $regex: query.title, $options: "i" };
+            filter.title = { $regex: query.title, $options: "i" };
         }
 
-        if (query.numberSession) {
-            filter.name = { $regex: query.numberSession, $options: "i" };
+        if (query.numberSession != null && query.numberSession !== undefined) {
+            const num = Number(query.numberSession);
+            if (!Number.isNaN(num)) {
+                filter.sessionNumber = num;
+            }
         }
 
         const data = await this.sessionModel
@@ -107,25 +110,21 @@ export class SessionService {
         }
     }
 
-    async getSessionById(sessionId: string, role: string): Promise<Session> {
-        const session = await this.sessionModel.findById(sessionId);
+    async getSessionById(sessionId: string, role?: string): Promise<Session> {
+        const session = await this.sessionModel.findOneAndUpdate(
+            { _id: sessionId },
+            { $inc: { views: 1 } },
+            { new: true }
+        ).exec();
         if (!session) {
             throw new NotFoundException(`Session with id ${sessionId} not found`);
         }
         if (session.mode != Mode.OPEN && role != Role.ADMIN) {
             throw new BadRequestException(`Session with id ${sessionId} is closed`);
         }
-        await this.sessionModel.findByIdAndUpdate(sessionId, { views: session.views + 1 }, { new: true });
         if (role == Role.ADMIN) {
-            return {
-                ...session.toJSON(),
-                mode: Mode.OPEN,
-                views: session.views + 1
-            } as Session;
+            return { ...session.toJSON(), mode: Mode.OPEN } as Session;
         }
-        return {
-            ...session.toJSON(),
-            views: session.views + 1
-        } as Session;
+        return session.toJSON() as Session;
     }
 }

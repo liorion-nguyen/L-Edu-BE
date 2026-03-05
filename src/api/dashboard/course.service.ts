@@ -35,20 +35,21 @@ export class CourseService {
       filter.status = status;
     }
 
+    // Không populate students để giảm payload; dùng studentCount cho list
     const courses = await this.courseModel
       .find(filter)
       .populate('instructorId', 'fullName email avatar')
-      .populate('students', 'fullName email avatar')
       .skip(skip)
       .limit(limit)
+      .lean()
       .exec();
     const total = await this.courseModel.countDocuments(filter).exec();
 
-    return { 
-      courses: courses.map(course => this.mapToResponseDto(course)), 
-      total, 
-      page, 
-      limit 
+    return {
+      courses: courses.map((course: any) => this.mapToResponseDto(course, true)),
+      total,
+      page,
+      limit,
     };
   }
 
@@ -229,21 +230,26 @@ export class CourseService {
     };
   }
 
-  private mapToResponseDto(course: CourseDocument): CourseResponseDto {
+  private mapToResponseDto(course: CourseDocument | any, listMode = false): CourseResponseDto {
+    const students = course.students ?? [];
+    const studentIds = Array.isArray(students)
+      ? students.map((s: any) => (typeof s === 'object' && s?._id ? s._id.toString() : s?.toString?.() ?? s))
+      : [];
     return {
-      _id: course._id.toString(),
+      _id: course._id?.toString?.() ?? course._id,
       name: course.name,
       description: course.description,
       price: course.price,
-      instructorId: course.instructorId,
-      instructor: (course as any).instructorId, // This is populated data
+      instructorId: course.instructorId?.toString?.() ?? course.instructorId,
+      instructor: (course as any).instructorId,
       category: course.category,
-      categoryId: course.categoryId,
+      categoryId: course.categoryId?.toString?.() ?? course.categoryId,
       cover: course.cover,
       icon: course.icon,
-      students: course.students, // Array of ObjectIds
-      studentDetails: (course as any).students, // This is populated data
-      sessions: course.sessions,
+      students: studentIds,
+      ...(listMode && { studentCount: studentIds.length }),
+      studentDetails: listMode ? undefined : (course as any).students,
+      sessions: course.sessions ?? [],
       duration: course.duration,
       status: course.status,
       averageRating: course.averageRating || 0,

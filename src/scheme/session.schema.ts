@@ -92,3 +92,5 @@ export class Session {
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);
+SessionSchema.index({ courseId: 1 });
+SessionSchema.index({ createdAt: -1 });

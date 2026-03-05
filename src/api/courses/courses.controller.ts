@@ -14,6 +14,7 @@ export class CoursesController {
     ) { }
 
     @Get("search")
+    @SkipAuth()
     async Search(@Query() query: SearchCourseRequest, @Req() req) {
         try {
             return successResponse(await this.courseService.Search(query, req.user));
@@ -52,6 +53,7 @@ export class CoursesController {
     }
 
     @Get(":id")
+    @SkipAuth()
     async GetCourse(@Param('id') id: string, @Req() req) {
         try {
             return successResponse(await this.courseService.GetCourse(id, req.user));

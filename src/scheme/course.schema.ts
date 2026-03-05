@@ -60,4 +60,7 @@ export class Course extends Document {
 }
 
 export const CourseSchema = SchemaFactory.createForClass(Course);
+CourseSchema.index({ categoryId: 1, status: 1, createdAt: -1 });
+CourseSchema.index({ instructorId: 1 });
+CourseSchema.index({ students: 1 });
 export type CourseDocument = Course & Document;

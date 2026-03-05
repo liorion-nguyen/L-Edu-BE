@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../../enums/user.enum';
+import { SkipAuth } from '../../config/skip.auth';
 
 @Controller('contact')
 export class ContactController {
@@ -23,6 +24,7 @@ export class ContactController {
   }
 
   @Get()
+  @SkipAuth()
   async findAll() {
     const contacts = await this.contactService.findAll();
     return {
@@ -45,6 +47,7 @@ export class ContactController {
   }
 
   @Get('type/:type')
+  @SkipAuth()
   async getByType(@Param('type') type: string) {
     const contacts = await this.contactService.getByType(type);
     return {
@@ -55,6 +58,7 @@ export class ContactController {
   }
 
   @Get(':id')
+  @SkipAuth()
   async findOne(@Param('id') id: string) {
     const contact = await this.contactService.findOne(id);
     return {

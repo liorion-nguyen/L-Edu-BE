@@ -55,3 +55,4 @@ ReviewSchema.pre('findOneAndUpdate', function(next) {
 // Index for efficient queries
 ReviewSchema.index({ courseId: 1, status: 1 });
 ReviewSchema.index({ userId: 1, courseId: 1 }, { unique: true }); // One review per user per course
+ReviewSchema.index({ createdAt: -1 });

@@ -119,7 +119,7 @@ export class DashboardService {
       },
       {
         $project: {
-          title: 1,
+          name: 1,
           enrollmentCount: { $size: '$enrolledStudents' }
         }
       },
@@ -133,7 +133,7 @@ export class DashboardService {
 
     const result = await this.courseModel.aggregate(pipeline);
     return result.map(item => ({
-      course: item.title,
+      course: item.name,
       enrollments: item.enrollmentCount
     }));
   }
@@ -260,7 +260,7 @@ export class DashboardService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     return this.userModel.countDocuments({
-      lastLoginAt: {
+      lastLogin: {
         $gte: today,
         $lt: tomorrow
       }
@@ -428,9 +428,9 @@ export class DashboardService {
         },
         {
           $project: {
-            user: { $arrayElemAt: ['$userInfo.name', 0] },
+            user: { $arrayElemAt: ['$userInfo.fullName', 0] },
             action: 'left_review',
-            course: { $arrayElemAt: ['$courseInfo.title', 0] },
+            course: { $arrayElemAt: ['$courseInfo.name', 0] },
             createdAt: '$createdAt',
             status: 'processing'
           }
@@ -468,7 +468,7 @@ export class DashboardService {
         },
         {
           $project: {
-            user: { $arrayElemAt: ['$userInfo.name', 0] },
+            user: { $arrayElemAt: ['$userInfo.fullName', 0] },
             action: 'started_chat',
             course: '$title',
             createdAt: '$createdAt',
@@ -484,7 +484,7 @@ export class DashboardService {
         {
           $match: {
             students: { $exists: true, $ne: [] },
-            title: { $exists: true, $ne: null, $nin: [''] }
+            name: { $exists: true, $ne: null, $nin: [''] }
           }
         },
         {
@@ -514,9 +514,9 @@ export class DashboardService {
         },
         {
           $project: {
-            user: { $arrayElemAt: ['$userInfo.name', 0] },
+            user: { $arrayElemAt: ['$userInfo.fullName', 0] },
             action: 'enrolled_course',
-            course: '$title',
+            course: '$name',
             createdAt: '$updatedAt',
             status: 'success'
           }
@@ -588,8 +588,8 @@ export class DashboardService {
       };
 
       const sampleData = {
-        sampleUsers: await this.userModel.find().limit(3).select('name email'),
-        sampleCourses: await this.courseModel.find().limit(3).select('title students'),
+        sampleUsers: await this.userModel.find().limit(3).select('fullName email'),
+        sampleCourses: await this.courseModel.find().limit(3).select('name students'),
         sampleReviews: await this.reviewModel.find().limit(3).select('userId courseId createdAt'),
         sampleConversations: await this.conversationModel.find().limit(3).select('userId title createdAt')
       };

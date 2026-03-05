@@ -20,7 +20,7 @@ export class CoursesService {
         private readonly sessionService: SessionService,
     ) { }
 
-    async Search(query: SearchCourseRequest, user): Promise<{ data: CourseResponse[]; total: number }> {
+    async Search(query: SearchCourseRequest, user?: { _id: string; role: string }): Promise<{ data: CourseResponse[]; total: number }> {
         const { limit = 6, page = 0 } = query;
         const offset = page * limit;
         const filter: any = {};
@@ -38,32 +38,28 @@ export class CoursesService {
             .sort({ createdAt: -1 })
             .skip(offset)
             .limit(limit)
+            .populate('instructorId', 'fullName avatar')
             .lean()
             .exec();
 
         const total = await this.courseModel.countDocuments(filter).exec();
 
-        const coursesWithInstructor: CourseResponse[] = await Promise.all(
-            data.map(async (course) => {
-                if (course.status != Status.ACTIVE) {
-                    return;
-                }
+        const coursesWithInstructor: CourseResponse[] = data
+            .filter((course) => course.status === Status.ACTIVE)
+            .map((course) => {
                 let mode = Mode.OPEN;
-                let instructor: UserCoreResponse | null = null;
+                const populated = course.instructorId as any;
+                const instructor: UserCoreResponse | null = populated
+                    ? { _id: populated._id?.toString(), fullName: populated.fullName, avatar: populated.avatar }
+                    : null;
 
-                if (course.instructorId) {
-                    try {
-                        instructor = await this.userService.getUserCore(course.instructorId);
-                    } catch (error) {
-                        console.error(`Lỗi lấy instructor cho course ${course._id}:`, error);
-                    }
-                }
-
-                if (user.role !== Role.ADMIN) {
-                    const isStudentEnrolled = course.students.some((studentId: any) => studentId.toString() === user._id.toString());
+                if (user && user.role !== Role.ADMIN) {
+                    const isStudentEnrolled = (course.students || []).some((studentId: any) => studentId.toString() === user._id.toString());
                     if (!isStudentEnrolled) {
                         mode = Mode.CLOSE;
                     }
+                } else if (!user) {
+                    mode = Mode.CLOSE;
                 }
 
                 return {
@@ -72,8 +68,7 @@ export class CoursesService {
                     instructor,
                     mode
                 };
-            })
-        );
+            });
 
         coursesWithInstructor.sort((a, b) => (a.mode === Mode.OPEN ? -1 : 1));
 
@@ -154,24 +149,17 @@ export class CoursesService {
         }
     }
 
-    async GetCourse(_id: string, user): Promise<CourseResponse> {
+    async GetCourse(_id: string, user?: { _id: string; role: string }): Promise<CourseResponse> {
         const course = await this.courseModel.findById(_id);
         if (!course) {
             throw new Error(`Course with id ${_id} not found`);
         }
-        if (user.role !== Role.ADMIN) {
-            const isStudentEnrolled = course.students.some((studentId: any) => studentId.toString() === user._id.toString());
-            if (!isStudentEnrolled) {
-                throw new Error(`Student with id ${user._id} is not enrolled in this course`);
-            }
-        }
+        const role = user?.role ?? Role.STUDENT;
 
-        const instructor = course.instructorId
-            ? await this.userService.getUserCore(course.instructorId)
-            : null;
-
-        const sessions = course.sessions.length > 0
-            ? await this.sessionService.getSessionsCore(_id, user.role) : [];
+        const [instructor, sessions] = await Promise.all([
+            course.instructorId ? this.userService.getUserCore(course.instructorId) : Promise.resolve(null),
+            course.sessions.length > 0 ? this.sessionService.getSessionsCore(_id, role) : Promise.resolve([]),
+        ]);
 
         return {
             _id: course._id.toString(),

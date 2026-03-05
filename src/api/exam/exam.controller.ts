@@ -3,6 +3,7 @@ import { ExamService } from "./exam.service";
 import { CreateExamDto, UpdateExamDto } from "./dto/exam-config.dto";
 import { CreateAttemptDto, SaveAttemptProgressDto, SubmitAttemptDto } from "./dto/attempt.dto";
 import { Request } from "express";
+import { SkipAuth } from "src/config/skip.auth";
 
 @Controller("exam")
 export class ExamController {
@@ -24,6 +25,7 @@ export class ExamController {
     }
 
     @Get()
+    @SkipAuth()
     listExams(
         @Query("instructorId") instructorId?: string,
         @Query("courseId") courseId?: string,
@@ -37,11 +39,13 @@ export class ExamController {
     }
 
     @Get(":examId")
+    @SkipAuth()
     getExamDetail(@Param("examId") examId: string) {
         return this.examService.getExamDetail(examId);
     }
 
     @Get(":examId/overview")
+    @SkipAuth()
     getExamOverview(@Param("examId") examId: string) {
         return this.examService.getExamOverview(examId);
     }

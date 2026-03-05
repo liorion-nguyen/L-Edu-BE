@@ -151,6 +151,8 @@ export class CourseResponseDto {
   cover?: string;
   icon?: string;
   students: string[];
+  /** Số lượng học viên (dùng cho list, tránh populate nặng) */
+  studentCount?: number;
   studentDetails?: {
     _id: string;
     fullName: string;

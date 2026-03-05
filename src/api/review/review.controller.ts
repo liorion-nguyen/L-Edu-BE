@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../../enums/user.enum';
+import { SkipAuth } from '../../config/skip.auth';
 
 @Controller('reviews')
 export class ReviewController {
@@ -39,6 +40,7 @@ export class ReviewController {
   }
 
   @Get('course/:courseId')
+  @SkipAuth()
   async findByCourseId(@Param('courseId') courseId: string, @Query() query: ReviewQueryDto) {
     const result = await this.reviewService.findByCourseId(courseId, query);
     return {
@@ -70,6 +72,7 @@ export class ReviewController {
   }
 
   @Get('stats')
+  @SkipAuth()
   async getStats(@Query('courseId') courseId?: string) {
     const stats = await this.reviewService.getStats(courseId);
     return {
@@ -80,7 +83,7 @@ export class ReviewController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @SkipAuth()
   async findOne(@Param('id') id: string) {
     const review = await this.reviewService.findOne(id);
     return {
