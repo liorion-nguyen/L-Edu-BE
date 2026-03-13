@@ -22,6 +22,7 @@ import { ContactModule } from './api/contact/contact.module';
 import { FooterModule } from './api/footer/footer.module';
 import { ContentModule } from './api/content/content.module';
 import { ExamModule } from './api/exam/exam.module';
+import { LinkedAppModule } from './api/linked-app/linked-app.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -47,6 +48,7 @@ import { ExamModule } from './api/exam/exam.module';
     FooterModule,
     ContentModule,
     ExamModule,
+    LinkedAppModule,
   ],
   controllers: [AppController],
   providers: [

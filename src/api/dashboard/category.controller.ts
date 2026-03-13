@@ -10,6 +10,8 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -51,6 +53,17 @@ export class CategoryController {
     return { data: stats };
   }
 
+  @Post('upload/icon')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadIcon(@UploadedFile() file: Express.Multer.File): Promise<{ data: { url: string } }> {
+    if (!file) {
+      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+    }
+    const result = await this.categoryService.uploadIcon(file);
+    return { data: result };
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.STUDENT, Role.TEACHER)
   async findOne(@Param('id') id: string): Promise<{ data: CategoryResponseDto }> {
@@ -73,14 +86,6 @@ export class CategoryController {
   async remove(@Param('id') id: string): Promise<{ message: string }> {
     await this.categoryService.remove(id);
     return { message: 'Category deleted successfully' };
-  }
-
-  @Post('upload/icon')
-  @Roles(Role.ADMIN)
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadIcon(@UploadedFile() file: Express.Multer.File): Promise<{ data: { url: string } }> {
-    const result = await this.categoryService.uploadIcon(file);
-    return { data: result };
   }
 
   @Delete('icon/:url')

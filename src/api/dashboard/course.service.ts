@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Course, CourseDocument } from '../../scheme/course.schema';
 import { User, UserDocument } from '../../scheme/user.schema';
 import { CreateCourseDto, UpdateCourseDto, CourseQueryDto, CourseResponseDto, CourseStatsDto, AddStudentToCourseDto, RemoveStudentFromCourseDto, UpdateCourseInstructorDto } from './dto/course.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { CourseRegistrationService } from './course-registration.service';
 
 @Injectable()
 export class CourseService {
@@ -12,10 +13,11 @@ export class CourseService {
     @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private cloudinaryService: CloudinaryService,
+    private registrationService: CourseRegistrationService,
   ) {}
 
   async findAll(query: CourseQueryDto): Promise<{ courses: CourseResponseDto[]; total: number; page: number; limit: number }> {
-    const { page = 1, limit = 10, search, category, categoryId, status } = query;
+    const { page = 1, limit = 10, search, category, categoryId, status, instructorId, hasStudents, hasPendingRegistration, studentId } = query;
     const skip = (page - 1) * limit;
     const filter: any = {};
 
@@ -34,11 +36,30 @@ export class CourseService {
     if (status) {
       filter.status = status;
     }
+    if (instructorId) {
+      filter.instructorId = new Types.ObjectId(instructorId);
+    }
+    if (hasStudents === 'yes') {
+      filter.$expr = { $gt: [{ $size: { $ifNull: ['$students', []] } }, 0] };
+    } else if (hasStudents === 'no') {
+      filter.$expr = { $eq: [{ $size: { $ifNull: ['$students', []] } }, 0] };
+    }
+    if (hasPendingRegistration) {
+      const courseIdsWithPending = await this.registrationService.getCourseIdsWithPendingRegistrations();
+      if (courseIdsWithPending.length === 0) {
+        filter._id = { $in: [] };
+      } else {
+        filter._id = { $in: courseIdsWithPending.map((id) => new Types.ObjectId(id)) };
+      }
+    }
+    if (studentId) {
+      filter.students = new Types.ObjectId(studentId);
+    }
 
-    // Không populate students để giảm payload; dùng studentCount cho list
     const courses = await this.courseModel
       .find(filter)
       .populate('instructorId', 'fullName email avatar')
+      .populate('categoryId', 'name')
       .skip(skip)
       .limit(limit)
       .lean()
@@ -57,6 +78,7 @@ export class CourseService {
     const course = await this.courseModel
       .findById(id)
       .populate('instructorId', 'fullName email avatar')
+      .populate('categoryId', 'name')
       .populate('students', 'fullName email avatar')
       .exec();
     if (!course) {
@@ -235,15 +257,28 @@ export class CourseService {
     const studentIds = Array.isArray(students)
       ? students.map((s: any) => (typeof s === 'object' && s?._id ? s._id.toString() : s?.toString?.() ?? s))
       : [];
+    const instructorRef = (course as any).instructorId;
+    const instructorIdStr =
+      instructorRef == null
+        ? undefined
+        : typeof instructorRef === 'object'
+          ? (instructorRef._id ?? instructorRef.id)?.toString?.() ?? instructorRef?.toString?.()
+          : String(instructorRef);
+    const categoryRef = (course as any).categoryId;
+    const categoryName =
+      typeof categoryRef === 'object' && categoryRef !== null && categoryRef.name != null
+        ? categoryRef.name
+        : course.category ?? undefined;
     return {
       _id: course._id?.toString?.() ?? course._id,
       name: course.name,
       description: course.description,
       price: course.price,
-      instructorId: course.instructorId?.toString?.() ?? course.instructorId,
-      instructor: (course as any).instructorId,
+      instructorId: instructorIdStr,
+      instructor: typeof instructorRef === 'object' && instructorRef !== null ? instructorRef : undefined,
       category: course.category,
-      categoryId: course.categoryId?.toString?.() ?? course.categoryId,
+      categoryId: typeof categoryRef === 'object' ? (categoryRef?._id ?? categoryRef?.id)?.toString?.() ?? course.categoryId : (course.categoryId?.toString?.() ?? course.categoryId),
+      categoryName,
       cover: course.cover,
       icon: course.icon,
       students: studentIds,

@@ -1,22 +1,22 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
   UseGuards,
-  Req
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../../enums/user.enum';
-import { CourseRegistrationService } from './course-registration.service';
-import { CreateCourseRegistrationDto, UpdateCourseRegistrationDto, CourseRegistrationResponseDto } from './dto/course-registration.dto';
 import { RegistrationStatus } from '../../scheme/course-registration.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { CourseRegistrationService } from './course-registration.service';
+import { CourseRegistrationResponseDto, CreateCourseRegistrationDto, UpdateCourseRegistrationDto } from './dto/course-registration.dto';
 
 @Controller('dashboard/course-registrations')
 @UseGuards(JwtAuthGuard)
@@ -52,6 +52,30 @@ export class CourseRegistrationController {
   @Roles(Role.ADMIN, Role.TEACHER)
   async getRegistrationsByStatus(@Param('status') status: RegistrationStatus): Promise<CourseRegistrationResponseDto[]> {
     return this.registrationService.getRegistrationsByStatus(status);
+  }
+
+  /** Phải đứng trước by-course/:courseId để path "count-by-courses" không bị match nhầm thành courseId */
+  @Get('count-by-courses')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  async getRegistrationCountByCourseIds(@Query('courseIds') courseIds: string | string[]): Promise<Record<string, number>> {
+    const ids = Array.isArray(courseIds) ? courseIds : (typeof courseIds === 'string' ? courseIds.split(',') : []);
+    return this.registrationService.getRegistrationCountByCourseIds(ids);
+  }
+
+  @Get('pending-count-by-courses')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  async getPendingRegistrationCountByCourseIds(@Query('courseIds') courseIds: string | string[]): Promise<Record<string, number>> {
+    const ids = Array.isArray(courseIds) ? courseIds : (typeof courseIds === 'string' ? courseIds.split(',') : []);
+    return this.registrationService.getPendingRegistrationCountByCourseIds(ids);
+  }
+
+  @Get('by-course/:courseId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.TEACHER)
+  async getRegistrationsByCourse(@Param('courseId') courseId: string): Promise<CourseRegistrationResponseDto[]> {
+    return this.registrationService.getRegistrationsByCourse(courseId);
   }
 
   @Put(':id/status')

@@ -1,9 +1,9 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import type { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import basicAuth from 'express-basic-auth';
-import type { INestApplication } from '@nestjs/common';
+import { AppModule } from './app.module';
 
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +12,8 @@ export async function createApp(): Promise<INestApplication> {
       'https://l-edu.vercel.app',
       'http://localhost:3000',
       'https://l-edu-fe.vercel.app',
+      'https://l-edu-admin.vercel.app',
+      'http://localhost:3001',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',

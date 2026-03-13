@@ -162,6 +162,10 @@ export class UpdateExamDto {
     @MaxLength(5000)
     description?: string;
 
+  @IsOptional()
+  @IsString()
+  courseId?: string;
+
     @IsOptional()
     @IsArray()
     @IsString({ each: true })

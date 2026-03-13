@@ -31,7 +31,15 @@ export class ExamService {
         @InjectModel(ExamAttempt.name) private readonly attemptModel: Model<ExamAttempt>,
     ) {}
 
-    async listExams(filterParams: { instructorId?: string; courseId?: string; visibility?: ExamVisibility }) {
+    async listExams(filterParams: {
+        instructorId?: string;
+        courseId?: string;
+        visibility?: ExamVisibility;
+        search?: string;
+        studentId?: string;
+        createdFrom?: string;
+        createdTo?: string;
+    }) {
         const filter: FilterQuery<Exam> = {};
         if (filterParams.instructorId) {
             filter.instructorId = filterParams.instructorId;
@@ -41,6 +49,30 @@ export class ExamService {
         }
         if (filterParams.visibility) {
             filter.visibility = filterParams.visibility;
+        }
+        if (filterParams.search && filterParams.search.trim()) {
+            filter.title = { $regex: filterParams.search.trim(), $options: "i" };
+        }
+        if (filterParams.createdFrom || filterParams.createdTo) {
+            filter.createdAt = {};
+            if (filterParams.createdFrom) {
+                filter.createdAt.$gte = new Date(filterParams.createdFrom);
+            }
+            if (filterParams.createdTo) {
+                const to = new Date(filterParams.createdTo);
+                to.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = to;
+            }
+        }
+        if (filterParams.studentId && filterParams.studentId.trim()) {
+            const attemptExamIds = await this.attemptModel
+                .distinct("examId", { studentId: filterParams.studentId.trim() })
+                .exec();
+            if (attemptExamIds.length === 0) {
+                filter._id = { $in: [] };
+            } else {
+                filter._id = { $in: attemptExamIds };
+            }
         }
 
         const exams = await this.examModel
@@ -199,6 +231,9 @@ export class ExamService {
         if (payload.description !== undefined) {
             exam.description = payload.description;
         }
+        if ((payload as any).courseId !== undefined) {
+            exam.courseId = (payload as any).courseId;
+        }
         if (payload.sessionIds) {
             exam.sessionIds = payload.sessionIds;
         }
@@ -217,6 +252,18 @@ export class ExamService {
             throw new NotFoundException("Exam not found");
         }
         return exam.toObject();
+    }
+
+    async deleteExam(examId: string) {
+        const exam = await this.examModel.findById(examId).lean();
+        if (!exam) {
+            throw new NotFoundException("Exam not found");
+        }
+
+        await this.attemptModel.deleteMany({ examId: examId as any });
+        await this.examModel.deleteOne({ _id: examId as any });
+
+        return { message: "Exam deleted successfully" };
     }
 
     async getExamDetail(examId: string) {

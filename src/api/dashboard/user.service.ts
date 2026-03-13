@@ -2,20 +2,30 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../../scheme/user.schema';
+import { CourseRegistration, CourseRegistrationDocument } from '../../scheme/course-registration.schema';
+import { Session, SessionDocument } from '../../scheme/session.schema';
 import { CreateUserDto, UpdateUserDto, UserQueryDto, UserResponseDto, UserStatsDto } from './dto/user.dto';
 import * as bcrypt from 'bcryptjs';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(CourseRegistration.name) private courseRegistrationModel: Model<CourseRegistrationDocument>,
+    @InjectModel(Session.name) private sessionModel: Model<SessionDocument>,
   ) {}
 
   async getAllUsers(query: UserQueryDto): Promise<{ users: UserResponseDto[]; total: number }> {
     const {
       search,
+      email,
+      fullName,
+      gender,
       role,
       status,
+      courseId,
+      sessionId,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = 1,
@@ -31,13 +41,41 @@ export class UserService {
         { email: { $regex: search, $options: 'i' } },
       ];
     }
-
+    if (email) {
+      filter.email = { $regex: email, $options: 'i' };
+    }
+    if (fullName) {
+      filter.fullName = { $regex: fullName, $options: 'i' };
+    }
+    if (gender) {
+      filter.gender = { $regex: new RegExp(`^${gender}$`, 'i') };
+    }
     if (role) {
       filter.role = role;
     }
-
     if (status) {
       filter.status = status;
+    }
+    if (courseId || sessionId) {
+      let userIds: Types.ObjectId[] = [];
+      if (courseId && sessionId) {
+        const [regs, session] = await Promise.all([
+          this.courseRegistrationModel.find({ courseId: new Types.ObjectId(courseId) }).select('userId').lean().exec(),
+          this.sessionModel.findById(sessionId).select('students').lean().exec(),
+        ]);
+        const courseUserIds = new Set((regs as any[]).map((r) => String(r.userId)));
+        const sessionStudentIds = ((session as any)?.students ?? []).map((s: any) => String(s));
+        const intersection = sessionStudentIds.filter((id) => courseUserIds.has(id));
+        userIds = intersection.map((id) => new Types.ObjectId(id));
+      } else if (courseId) {
+        const regs = await this.courseRegistrationModel.find({ courseId: new Types.ObjectId(courseId) }).select('userId').lean().exec();
+        userIds = (regs as any[]).map((r) => r.userId).filter(Boolean);
+      } else if (sessionId) {
+        const session = await this.sessionModel.findById(sessionId).select('students').lean().exec();
+        const ids = (session as any)?.students ?? [];
+        userIds = ids.map((s: any) => new Types.ObjectId(s)).filter(Boolean);
+      }
+      filter._id = userIds.length ? { $in: userIds } : { $in: [] };
     }
 
     // Build sort object

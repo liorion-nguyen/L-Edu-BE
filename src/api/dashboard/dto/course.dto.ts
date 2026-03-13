@@ -132,6 +132,25 @@ export class CourseQueryDto {
   @IsOptional()
   @IsEnum(Status)
   status?: Status;
+
+  @IsOptional()
+  @IsString()
+  instructorId?: string;
+
+  /** 'yes' = có học viên, 'no' = chưa có học viên */
+  @IsOptional()
+  @IsString()
+  hasStudents?: 'yes' | 'no';
+
+  /** true = chỉ khóa có yêu cầu đăng ký chờ duyệt */
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  hasPendingRegistration?: boolean;
+
+  /** Chỉ khóa có học viên này tham gia */
+  @IsOptional()
+  @IsString()
+  studentId?: string;
 }
 
 export class CourseResponseDto {
@@ -148,6 +167,8 @@ export class CourseResponseDto {
   };
   category?: string;
   categoryId?: string;
+  /** Tên danh mục (khi populate categoryId) */
+  categoryName?: string;
   cover?: string;
   icon?: string;
   students: string[];

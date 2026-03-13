@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { ExamService } from "./exam.service";
 import { CreateExamDto, UpdateExamDto } from "./dto/exam-config.dto";
 import { CreateAttemptDto, SaveAttemptProgressDto, SubmitAttemptDto } from "./dto/attempt.dto";
@@ -19,6 +19,11 @@ export class ExamController {
         return this.examService.updateExam(examId, payload);
     }
 
+    @Delete(":examId")
+    deleteExam(@Param("examId") examId: string) {
+        return this.examService.deleteExam(examId);
+    }
+
     @Post(":examId/publish")
     publishExam(@Param("examId") examId: string) {
         return this.examService.publishExam(examId);
@@ -30,11 +35,19 @@ export class ExamController {
         @Query("instructorId") instructorId?: string,
         @Query("courseId") courseId?: string,
         @Query("visibility") visibility?: string,
+        @Query("search") search?: string,
+        @Query("studentId") studentId?: string,
+        @Query("createdFrom") createdFrom?: string,
+        @Query("createdTo") createdTo?: string,
     ) {
         return this.examService.listExams({
             instructorId,
             courseId,
             visibility: visibility as any,
+            search,
+            studentId,
+            createdFrom,
+            createdTo,
         });
     }
 

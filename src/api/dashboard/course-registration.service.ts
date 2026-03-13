@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CourseRegistration, CourseRegistrationDocument, RegistrationStatus } from '../../scheme/course-registration.schema';
 import { Course, CourseDocument } from '../../scheme/course.schema';
 import { User, UserDocument } from '../../scheme/user.schema';
@@ -87,6 +87,68 @@ export class CourseRegistrationService {
       .exec();
 
     return registrations.map(reg => this.mapToResponseDto(reg));
+  }
+
+  async getRegistrationsByCourse(courseId: string): Promise<CourseRegistrationResponseDto[]> {
+    const registrations = await this.registrationModel
+      .find({ courseId })
+      .populate('userId', 'fullName email avatar')
+      .populate('courseId', 'name description cover')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    return registrations.map((reg: any) => this.mapToResponseDto(reg));
+  }
+
+  async getRegistrationCountByCourseIds(courseIds: string[]): Promise<Record<string, number>> {
+    if (!courseIds.length) return {};
+    const normalizedIds = courseIds.filter(Boolean).map((id) => String(id).trim());
+    if (!normalizedIds.length) return {};
+    const counts = await this.registrationModel.aggregate([
+      { $addFields: { courseIdStr: { $toString: '$courseId' } } },
+      { $match: { courseIdStr: { $in: normalizedIds } } },
+      { $group: { _id: '$courseIdStr', count: { $sum: 1 } } },
+    ]).exec();
+    const countById = new Map<string, number>();
+    counts.forEach((c: any) => {
+      const key = c._id != null ? String(c._id) : '';
+      countById.set(key, c.count);
+    });
+    const map: Record<string, number> = {};
+    normalizedIds.forEach((id) => {
+      map[id] = countById.get(id) ?? 0;
+    });
+    return map;
+  }
+
+  async getCourseIdsWithPendingRegistrations(): Promise<string[]> {
+    const result = await this.registrationModel
+      .distinct('courseId', { status: RegistrationStatus.PENDING })
+      .lean()
+      .exec();
+    return (result || []).map((id: any) => (id?.toString?.() ?? String(id)));
+  }
+
+  async getPendingRegistrationCountByCourseIds(courseIds: string[]): Promise<Record<string, number>> {
+    if (!courseIds.length) return {};
+    const normalizedIds = courseIds.filter(Boolean).map((id) => String(id).trim());
+    if (!normalizedIds.length) return {};
+    const counts = await this.registrationModel.aggregate([
+      { $addFields: { courseIdStr: { $toString: '$courseId' } } },
+      { $match: { courseIdStr: { $in: normalizedIds }, status: RegistrationStatus.PENDING } },
+      { $group: { _id: '$courseIdStr', count: { $sum: 1 } } },
+    ]).exec();
+    const countById = new Map<string, number>();
+    counts.forEach((c: any) => {
+      const key = c._id != null ? String(c._id) : '';
+      countById.set(key, c.count);
+    });
+    const map: Record<string, number> = {};
+    normalizedIds.forEach((id) => {
+      map[id] = countById.get(id) ?? 0;
+    });
+    return map;
   }
 
   async updateRegistrationStatus(
