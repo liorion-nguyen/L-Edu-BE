@@ -7,14 +7,22 @@ import { AppModule } from './app.module';
 
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
+  const allowedOrigins = [
+    'https://l-edu.vercel.app',
+    'http://localhost:3000',
+    'https://l-edu-fe.vercel.app',
+    'https://l-edu-admin.vercel.app',
+    'http://localhost:3001',
+  ];
   app.enableCors({
-    origin: [
-      'https://l-edu.vercel.app',
-      'http://localhost:3000',
-      'https://l-edu-fe.vercel.app',
-      'https://l-edu-admin.vercel.app',
-      'http://localhost:3001',
-    ],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (/^https:\/\/l-edu-admin(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/l-edu(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/l-edu-fe(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
+      callback(null, false);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
     credentials: true,
