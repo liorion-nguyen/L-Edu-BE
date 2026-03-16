@@ -1,7 +1,8 @@
-import type { Request, RequestHandler, Response } from 'express';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { createApp } from '../dist/app.factory';
 
-let cachedHandler: RequestHandler | null = null;
+type ExpressHandler = (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void;
+let cachedHandler: ExpressHandler | null = null;
 
 const ALLOWED_ORIGINS = [
   'https://l-edu.vercel.app',
@@ -20,9 +21,9 @@ function isOriginAllowed(origin: string | undefined): boolean {
   return false;
 }
 
-function setCorsHeaders(req: Request, res: Response): void {
-  const origin = req.headers.origin;
-  if (origin && isOriginAllowed(origin)) {
+function setCorsHeaders(req: IncomingMessage, res: ServerResponse): void {
+  const origin = req.headers?.origin;
+  if (typeof origin === 'string' && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -31,18 +32,19 @@ function setCorsHeaders(req: Request, res: Response): void {
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
   setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.statusCode = 204;
+    res.end();
     return;
   }
 
   if (!cachedHandler) {
     const app = await createApp();
     await app.init();
-    cachedHandler = app.getHttpAdapter().getInstance();
+    cachedHandler = app.getHttpAdapter().getInstance() as ExpressHandler;
   }
   return new Promise<void>((resolve, reject) => {
     cachedHandler!(req, res, (err?: unknown) => (err ? reject(err) : resolve()));
