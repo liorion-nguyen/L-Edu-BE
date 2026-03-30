@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpStatus, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { successResponse } from "src/common/dto/response.dto";
 import { CommonException } from "src/common/exception/exception";
 import { SkipAuth } from "src/config/skip.auth";
 import { CoursesService } from "./courses.service";
 import { CreateCourseRequest, SearchCourseRequest, UpdateCourseRequest } from "src/payload/request/courses.request";
 import { CategoryService } from "../dashboard/category.service";
+import { OptionalJwtAuthGuard } from "src/common/guards/optional-jwt-auth.guard";
 
 @Controller("courses")
 export class CoursesController {
@@ -15,6 +16,7 @@ export class CoursesController {
 
     @Get("search")
     @SkipAuth()
+    @UseGuards(OptionalJwtAuthGuard)
     async Search(@Query() query: SearchCourseRequest, @Req() req) {
         try {
             return successResponse(await this.courseService.Search(query, req.user));

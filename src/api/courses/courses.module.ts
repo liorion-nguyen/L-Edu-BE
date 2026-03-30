@@ -8,6 +8,7 @@ import { SessionModule } from "../session/session.module";
 import { CategoryService } from "../dashboard/category.service";
 import { Category, CategorySchema } from "src/scheme/category.schema";
 import { CloudinaryModule } from "../cloudinary/cloudinary.module";
+import { OptionalJwtAuthGuard } from "src/common/guards/optional-jwt-auth.guard";
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { CloudinaryModule } from "../cloudinary/cloudinary.module";
     forwardRef(() => CloudinaryModule),
   ],
   controllers: [CoursesController],
-  providers: [CoursesService, CategoryService],
+  providers: [CoursesService, CategoryService, OptionalJwtAuthGuard],
   exports: [CoursesService, MongooseModule],
 })
 export class CourseModule {}

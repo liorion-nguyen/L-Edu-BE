@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -10,6 +10,16 @@ import { ClassService } from '../dashboard/class.service';
 @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
 export class ClassesController {
   constructor(private readonly classService: ClassService) {}
+
+  @Get('my-schedule')
+  async getMySchedule(
+    @Req() req: { user: { _id: string } },
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const events = await this.classService.getMySchedule(req.user._id, { from, to });
+    return { success: true, message: 'My schedule fetched successfully', data: events };
+  }
 
   @Get('my-classes')
   async getMyClasses(@Req() req: { user: { _id: string } }) {

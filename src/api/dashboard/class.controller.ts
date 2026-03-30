@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { CreateClassDto, UpdateClassDto, ClassQueryDto, UpdateAttendanceDto, UpdateSessionNoteDto } from './dto/class.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -84,8 +84,19 @@ export class ClassController {
   }
 
   @Get(':id/notes/:sessionId')
-  @Roles(Role.ADMIN, Role.TEACHER)
-  async getSessionNote(@Param('id') id: string, @Param('sessionId') sessionId: string) {
+  @Roles(Role.ADMIN, Role.TEACHER, Role.STUDENT)
+  async getSessionNote(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Req() req: { user: { _id?: string; role: string } },
+  ) {
+    if (req.user.role === Role.STUDENT) {
+      // Student can only view notes for classes they belong to
+      const studentId = (req.user as any)?._id?.toString?.() ?? (req.user as any)?._id ?? '';
+      await this.classService.ensureStudentMember(id, studentId);
+      const note = await this.classService.getSessionNoteForStudent(id, sessionId, studentId);
+      return { success: true, message: 'Session note fetched successfully', data: note };
+    }
     const note = await this.classService.getSessionNote(id, sessionId);
     return { success: true, message: 'Session note fetched successfully', data: note };
   }

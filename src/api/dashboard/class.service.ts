@@ -138,23 +138,53 @@ export class ClassService {
       enrollments,
     });
     const saved = await created.save();
+
+    // Auto-enroll class students into the linked course
+    if (studentIds.length > 0) {
+      await this.courseModel.updateOne(
+        { _id: dto.courseId },
+        { $addToSet: { students: { $each: studentIds.map((id) => new Types.ObjectId(id)) } } },
+      ).exec();
+    }
     return this.findOne(saved._id.toString());
   }
 
   async update(id: string, dto: UpdateClassDto): Promise<ClassResponseDto> {
+    const before = await this.classModel.findById(id).lean().exec();
+    if (!before) {
+      throw new NotFoundException('Class not found');
+    }
     const update: any = {
       ...(dto.name != null && { name: dto.name }),
       ...(dto.teacherId !== undefined && { teacherId: dto.teacherId }),
       ...(dto.studentIds !== undefined && { studentIds: dto.studentIds }),
       ...(dto.status != null && { status: dto.status }),
     };
+    // Keep enrollments consistent with studentIds when updating roster
+    if (dto.studentIds !== undefined) {
+      update.enrollments = (dto.studentIds || []).map((userId: string) => ({
+        userId,
+        enrolledAt: new Date(),
+      }));
+    }
     if (dto.scheduleFrequency !== undefined) update.scheduleFrequency = dto.scheduleFrequency;
     if (dto.totalSessions !== undefined) update.totalSessions = dto.totalSessions;
     if (dto.scheduleSlots !== undefined) update.scheduleSlots = dto.scheduleSlots;
     const c = await this.classModel.findByIdAndUpdate(id, update, { new: true }).exec();
-    if (!c) {
-      throw new NotFoundException('Class not found');
+    if (!c) throw new NotFoundException('Class not found');
+
+    // Auto-enroll any (new) class students into the linked course
+    if (dto.studentIds !== undefined) {
+      const courseId = (before as any).courseId?.toString?.() ?? (before as any).courseId;
+      const ids = (dto.studentIds || []).filter(Boolean);
+      if (courseId && ids.length > 0) {
+        await this.courseModel.updateOne(
+          { _id: courseId },
+          { $addToSet: { students: { $each: ids.map((sid) => new Types.ObjectId(sid)) } } },
+        ).exec();
+      }
     }
+
     return this.findOne(c._id.toString());
   }
 
@@ -315,12 +345,68 @@ export class ClassService {
   async getSessionNoteForStudent(classId: string, sessionId: string, userId: string): Promise<{ sessionContent: string; homework: string; studentComments: { userId: string; comment: string }[] }> {
     await this.ensureStudentMember(classId, userId);
     const full = await this.getSessionNote(classId, sessionId);
-    const myComment = full.studentComments.find((c) => c.userId === userId);
+    const uid = typeof userId === 'string' ? userId : (userId as any)?.toString?.() ?? '';
+    const myComment = full.studentComments.find((c) => String(c.userId) === String(uid));
     return {
       sessionContent: full.sessionContent,
       homework: full.homework,
       studentComments: myComment ? [myComment] : [],
     };
+  }
+
+  async getMySchedule(
+    userId: string,
+    range?: { from?: string; to?: string },
+  ): Promise<
+    Array<{
+      classId: string;
+      className: string;
+      courseId?: string;
+      courseName?: string;
+      start: string;
+      end: string;
+      platform?: string;
+    }>
+  > {
+    const classes = await this.findMyClasses(userId);
+    const fromDate = range?.from ? new Date(range.from) : null;
+    const toDate = range?.to ? new Date(range.to) : null;
+    const now = new Date();
+
+    const events: Array<{
+      classId: string;
+      className: string;
+      courseId?: string;
+      courseName?: string;
+      start: string;
+      end: string;
+      platform?: string;
+    }> = [];
+
+    for (const c of classes) {
+      const slots = (c.scheduleSlots || []) as any[];
+      for (const s of slots) {
+        if (!s?.date || !s?.timeStart) continue;
+        const start = new Date(`${s.date}T${s.timeStart}:00`);
+        const end = new Date(`${s.date}T${(s.timeEnd || s.timeStart)}:00`);
+        if (Number.isNaN(start.getTime())) continue;
+        if (start.getTime() < now.getTime() - 1000 * 60 * 60 * 24) continue; // keep recent past out
+        if (fromDate && start.getTime() < fromDate.getTime()) continue;
+        if (toDate && start.getTime() > toDate.getTime()) continue;
+        events.push({
+          classId: c._id,
+          className: c.name,
+          courseId: c.course?._id || c.courseId,
+          courseName: c.course?.name,
+          start: start.toISOString(),
+          end: Number.isNaN(end.getTime()) ? start.toISOString() : end.toISOString(),
+          platform: 'Zoom',
+        });
+      }
+    }
+
+    events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    return events;
   }
 
   async updateSessionNote(classId: string, sessionId: string, dto: UpdateSessionNoteDto): Promise<{ sessionContent: string; homework: string; studentComments: { userId: string; comment: string }[] }> {

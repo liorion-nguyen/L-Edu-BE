@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, PipelineStage, Types } from "mongoose";
 import { CreateCourseRequest, SearchCourseRequest, UpdateCourseRequest } from "src/payload/request/courses.request";
 import { CourseResponse, MyCourseResponse } from "src/payload/response/courses.response";
 import { Course } from "src/scheme/course.schema";
@@ -21,9 +21,13 @@ export class CoursesService {
     ) { }
 
     async Search(query: SearchCourseRequest, user?: { _id: string; role: string }): Promise<{ data: CourseResponse[]; total: number }> {
-        const { limit = 6, page = 0 } = query;
+        const limit = Number(query.limit) || 6;
+        const page = Number(query.page) || 0;
         const offset = page * limit;
-        const filter: any = {};
+
+        const filter: Record<string, unknown> = {
+            status: Status.ACTIVE,
+        };
 
         if (query.name) {
             filter.name = { $regex: query.name, $options: "i" };
@@ -33,44 +37,90 @@ export class CoursesService {
             filter.categoryId = query.categoryId;
         }
 
+        const total = await this.courseModel.countDocuments(filter).exec();
+
+        const viewerId =
+            user?._id != null ? new Types.ObjectId(String(user._id)) : null;
+
+        const pipeline: PipelineStage[] = [{ $match: filter }];
+
+        if (viewerId) {
+            pipeline.push({
+                $addFields: {
+                    _isJoined: {
+                        $cond: [
+                            {
+                                $in: [
+                                    viewerId,
+                                    { $ifNull: ["$students", []] },
+                                ],
+                            },
+                            1,
+                            0,
+                        ],
+                    },
+                },
+            });
+            pipeline.push({
+                $sort: { _isJoined: -1, createdAt: -1 },
+            });
+        } else {
+            pipeline.push({ $sort: { createdAt: -1 } });
+        }
+
+        pipeline.push({ $skip: offset }, { $limit: limit });
+        pipeline.push({ $project: { _id: 1 } });
+
+        const idRows = await this.courseModel.aggregate(pipeline).exec();
+        const ids = idRows.map((r) => r._id as Types.ObjectId);
+
+        if (ids.length === 0) {
+            return { data: [], total };
+        }
+
         const data = await this.courseModel
-            .find(filter)
-            .sort({ createdAt: -1 })
-            .skip(offset)
-            .limit(limit)
-            .populate('instructorId', 'fullName avatar')
+            .find({ _id: { $in: ids } })
+            .populate("instructorId", "fullName avatar")
             .lean()
             .exec();
 
-        const total = await this.courseModel.countDocuments(filter).exec();
+        const orderMap = new Map(ids.map((id, i) => [id.toString(), i]));
+        data.sort(
+            (a, b) =>
+                (orderMap.get(String(a._id)) ?? 0) -
+                (orderMap.get(String(b._id)) ?? 0),
+        );
 
-        const coursesWithInstructor: CourseResponse[] = data
-            .filter((course) => course.status === Status.ACTIVE)
-            .map((course) => {
-                let mode = Mode.OPEN;
-                const populated = course.instructorId as any;
-                const instructor: UserCoreResponse | null = populated
-                    ? { _id: populated._id?.toString(), fullName: populated.fullName, avatar: populated.avatar }
-                    : null;
+        const coursesWithInstructor: CourseResponse[] = data.map((course) => {
+            let mode = Mode.OPEN;
+            const populated = course.instructorId as any;
+            const instructor: UserCoreResponse | null = populated
+                ? {
+                      _id: populated._id?.toString(),
+                      fullName: populated.fullName,
+                      avatar: populated.avatar,
+                  }
+                : null;
 
-                if (user && user.role !== Role.ADMIN) {
-                    const isStudentEnrolled = (course.students || []).some((studentId: any) => studentId.toString() === user._id.toString());
-                    if (!isStudentEnrolled) {
-                        mode = Mode.CLOSE;
-                    }
-                } else if (!user) {
+            if (user && user.role !== Role.ADMIN) {
+                const isStudentEnrolled = (course.students || []).some(
+                    (studentId: any) =>
+                        studentId.toString() === user._id.toString(),
+                );
+                if (!isStudentEnrolled) {
                     mode = Mode.CLOSE;
                 }
+            } else if (!user) {
+                mode = Mode.CLOSE;
+            }
 
-                return {
-                    ...course,
-                    _id: course._id.toString(),
-                    instructor,
-                    mode
-                };
-            });
-
-        coursesWithInstructor.sort((a, b) => (a.mode === Mode.OPEN ? -1 : 1));
+            return {
+                ...course,
+                _id: course._id.toString(),
+                instructor,
+                mode,
+            };
+        });
 
         return {
             data: coursesWithInstructor,
