@@ -34,7 +34,12 @@ export class CoursesService {
         }
 
         if (query.categoryId) {
-            filter.categoryId = query.categoryId;
+            // countDocuments/find cast string → ObjectId; aggregate $match does NOT — must cast or total vs rows mismatch
+            try {
+                filter.categoryId = new Types.ObjectId(query.categoryId);
+            } catch {
+                filter.categoryId = query.categoryId;
+            }
         }
 
         const total = await this.courseModel.countDocuments(filter).exec();

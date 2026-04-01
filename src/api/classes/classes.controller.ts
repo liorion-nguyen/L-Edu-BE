@@ -46,7 +46,15 @@ export class ClassesController {
   }
 
   @Get(':id/my-attendances')
-  async getMyAttendances(@Param('id') id: string, @Req() req: { user: { _id: string } }) {
+  async getMyAttendances(
+    @Param('id') id: string,
+    @Req() req: { user: { _id: string; role: string } },
+  ) {
+    // This endpoint is primarily for student-facing "my attendance" views.
+    // Admin/Teacher should not be blocked with 403 when browsing user-site pages.
+    if (req.user.role !== Role.STUDENT) {
+      return { success: true, message: 'My attendances fetched successfully', data: [] };
+    }
     const attendances = await this.classService.getMyAttendances(id, req.user._id);
     return { success: true, message: 'My attendances fetched successfully', data: attendances };
   }

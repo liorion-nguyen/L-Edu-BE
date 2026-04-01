@@ -291,7 +291,12 @@ export class ClassService {
     const objectId = new Types.ObjectId(uid);
     const classes = await this.classModel
       .find({
-        $or: [{ studentIds: objectId }, { 'enrollments.userId': objectId }],
+        $or: [
+          { studentIds: objectId },
+          { 'enrollments.userId': objectId },
+          // Allow teacher/admin to see classes they teach in user site views.
+          { teacherId: objectId },
+        ],
       })
       .populate('courseId', 'name')
       .populate('teacherId', 'fullName email')
