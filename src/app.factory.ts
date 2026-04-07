@@ -16,6 +16,7 @@ export async function createApp(): Promise<INestApplication> {
     'https://codelab.pro.vn',
     'https://app.codelab.pro.vn',
     'https://admin.codelab.pro.vn',
+    'https://www.codelab.pro.vn',
   ];
   app.enableCors({
     origin: (origin, callback) => {
@@ -24,10 +25,11 @@ export async function createApp(): Promise<INestApplication> {
       if (/^https:\/\/l-edu-admin(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
       if (/^https:\/\/l-edu(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
       if (/^https:\/\/l-edu-fe(-[\w-]+)?\.vercel\.app$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/([a-z0-9-]+\.)?codelab\.pro\.vn$/i.test(origin)) return callback(null, true);
       callback(null, false);
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization',
+    allowedHeaders: 'Content-Type, Authorization, Accept, Origin, X-Requested-With',
     credentials: true,
   });
 
