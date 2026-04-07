@@ -13,6 +13,9 @@ export async function createApp(): Promise<INestApplication> {
     'https://l-edu-fe.vercel.app',
     'https://l-edu-admin.vercel.app',
     'http://localhost:3001',
+    'https://codelab.pro.vn',
+    'https://app.codelab.pro.vn',
+    'https://admin.codelab.pro.vn',
   ];
   app.enableCors({
     origin: (origin, callback) => {
