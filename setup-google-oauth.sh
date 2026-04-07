@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Setting up Google OAuth for L-Edu..."
+echo "🚀 Setting up Google OAuth for CodeLab..."
 
 # Navigate to backend directory
 cd L-Edu-BE

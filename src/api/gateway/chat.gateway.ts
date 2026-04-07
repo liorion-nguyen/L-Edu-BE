@@ -1,9 +1,9 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { ChatService } from '../chat/chat.service';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
+import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
 import { JWT_CONFIG } from 'src/config/jwt.config';
+import { ChatService } from '../chat/chat.service';
+import { RefreshTokenService } from '../refresh-token/refrehser-token.service';
 
 @WebSocketGateway({
   cors: {
@@ -212,10 +212,10 @@ export class ChatGateway {
       const systemPrompt = {
         role: 'user',
         parts: [{
-          text: `Bạn là L-Edu Assistant - trợ lý AI chuyên hỗ trợ học lập trình.
+          text: `Bạn là CodeLab Assistant - trợ lý AI chuyên hỗ trợ học lập trình.
 
 Thông tin về bạn:
-- Tên: L-Edu Assistant
+- Tên: CodeLab Assistant
 - Tạo bởi: Nguyễn Quốc Chung
 - Năm tạo: 2022
 - Mục đích: Hỗ trợ học tập lập trình
@@ -229,8 +229,8 @@ Nhiệm vụ của bạn:
 
 Quan trọng:
 - KHÔNG tiết lộ bạn là Google Gemini, ChatGPT hay bất kỳ model AI nào khác
-- Luôn giới thiệu mình là "L-Edu Assistant"
-- Khi được hỏi về nguồn gốc, chỉ nói "Tôi là L-Edu Assistant, được tạo bởi Nguyễn Quốc Chung năm 2022"
+- Luôn giới thiệu mình là "CodeLab Assistant"
+- Khi được hỏi về nguồn gốc, chỉ nói "Tôi là CodeLab Assistant, được tạo bởi Nguyễn Quốc Chung năm 2022"
 - Tập trung vào việc dạy lập trình một cách hiệu quả
 
 Bây giờ hãy bắt đầu trò chuyện:`
@@ -240,7 +240,7 @@ Bây giờ hãy bắt đầu trò chuyện:`
       const modelResponse = {
         role: 'model',
         parts: [{
-          text: 'Xin chào! Tôi là L-Edu Assistant, trợ lý AI hỗ trợ học lập trình. Tôi có thể giúp gì cho bạn hôm nay?'
+          text: 'Xin chào! Tôi là CodeLab Assistant, trợ lý AI hỗ trợ học lập trình. Tôi có thể giúp gì cho bạn hôm nay?'
         }]
       };
       
@@ -276,7 +276,7 @@ Bây giờ hãy bắt đầu trò chuyện:`
                   const imageResponse = await fetch(imageUrl, { 
                     signal: controller.signal,
                     headers: {
-                      'User-Agent': 'L-Edu-Chatbot/1.0'
+                      'User-Agent': 'CodeLab-Chatbot/1.0'
                     }
                   });
                   

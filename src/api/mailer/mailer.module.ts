@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
 import { MailerModule as NestMailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { MailerService } from './mailer.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -21,7 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           },
         },
         defaults: {
-          from: `"L-Edu" <${config.get('MAIL_FROM')}>`,
+          from: `"CodeLab" <${config.get('MAIL_FROM')}>`,
         },
         template: {
           dir: join(__dirname, '../../../templates'),
