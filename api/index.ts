@@ -10,6 +10,10 @@ const ALLOWED_ORIGINS = [
   'https://l-edu-fe.vercel.app',
   'https://l-edu-admin.vercel.app',
   'http://localhost:3001',
+  'https://codelab.pro.vn',
+  'https://app.codelab.pro.vn',
+  'https://admin.codelab.pro.vn',
+  'https://www.codelab.pro.vn',
 ];
 
 function isOriginAllowed(origin: string | undefined): boolean {
