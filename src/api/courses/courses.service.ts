@@ -25,6 +25,23 @@ export class CoursesService {
         const page = Number(query.page) || 0;
         const offset = page * limit;
 
+        const viewerId =
+            user?._id != null ? new Types.ObjectId(String(user._id)) : null;
+
+        const joinedOnly =
+            String((query as any)?.joinedOnly ?? "")
+                .trim()
+                .toLowerCase() === "1" ||
+            String((query as any)?.joinedOnly ?? "")
+                .trim()
+                .toLowerCase() === "true";
+
+        // If caller explicitly wants joined-only, but there is no authenticated user,
+        // return empty instead of falling back to public catalog.
+        if (joinedOnly && !viewerId) {
+            return { data: [], total: 0 };
+        }
+
         const filter: Record<string, unknown> = {
             status: Status.ACTIVE,
         };
@@ -42,14 +59,17 @@ export class CoursesService {
             }
         }
 
-        const total = await this.courseModel.countDocuments(filter).exec();
+        // Student dashboard catalog: only return joined courses for students.
+        if (user?.role === Role.STUDENT && viewerId) {
+            filter.students = { $in: [viewerId] };
+        }
 
-        const viewerId =
-            user?._id != null ? new Types.ObjectId(String(user._id)) : null;
+        const total = await this.courseModel.countDocuments(filter).exec();
 
         const pipeline: PipelineStage[] = [{ $match: filter }];
 
-        if (viewerId) {
+        // Only non-students get joined-first sorting (for discovery pages).
+        if (viewerId && user?.role !== Role.STUDENT) {
             pipeline.push({
                 $addFields: {
                     _isJoined: {

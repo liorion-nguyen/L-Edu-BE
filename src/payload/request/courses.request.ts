@@ -103,6 +103,14 @@ export class SearchCourseRequest {
     @IsString()
     categoryId?: string;
 
+    @ApiPropertyOptional({
+        example: "1",
+        description: "Chỉ trả về khóa học đã tham gia (yêu cầu đăng nhập). 1/true để bật.",
+    })
+    @IsOptional()
+    @IsString()
+    joinedOnly?: string;
+
     // @ApiPropertyOptional({ example: "100000", description: "Giá tiền khoá học" })
     // @IsOptional()
     // @IsString()
